@@ -3,7 +3,6 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import AsyncSessionLocal
 from app.ingestion.workbook_loader import load_workbook_data
 from app.models import Account, DatasetConfig, Order, Ticket
 from app.schemas.workbook import WorkbookData
@@ -83,6 +82,8 @@ async def import_workbook_path(path: str | Path, session: AsyncSession | None = 
     if session is not None:
         await import_workbook_data(session, data)
         return data
+
+    from app.db.session import AsyncSessionLocal
 
     async with AsyncSessionLocal() as new_session:
         async with new_session.begin():
