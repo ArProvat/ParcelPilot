@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 sqlalchemy
+alembic
 pydantic
 pydantic-settings
 asyncpg
@@ -12,3 +13,4 @@ psycopg[binary]
 langchain-ollama
 openpyxl
 tzdata
+pgvector
