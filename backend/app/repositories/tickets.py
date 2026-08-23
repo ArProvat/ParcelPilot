@@ -52,3 +52,15 @@ class TicketRepository:
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def list_accessible(self, user: UserContext) -> list[Ticket]:
+        require_permission(user, "tickets:read")
+        stmt = select(Ticket).order_by(Ticket.created_at.desc())
+        allowed_accounts = accessible_account_ids(user)
+        if allowed_accounts is not None:
+            if not allowed_accounts:
+                return []
+            stmt = stmt.where(Ticket.account_id.in_(allowed_accounts))
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
