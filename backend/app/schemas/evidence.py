@@ -10,8 +10,19 @@ class Evidence(BaseModel):
     source_type: str
     section: str | None = None
     page: int | None = None
+    domain: str
     authority_class: str
     status: str
     account_id: str | None = None
     content: str
-    relevance_score: float | None = None
+    relevance_score: float
+
+
+class EvidenceSet(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    evidence: list[Evidence]
+    conflict_detected: bool = False
+    authoritative_source: str | None = None
+    explanation: str | None = None
+    requires_verification: bool = False

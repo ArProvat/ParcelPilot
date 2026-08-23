@@ -2,6 +2,8 @@
 from dataclasses import dataclass, field
 from datetime import date
 
+from app.retrieval.authority import AuthorityClass
+
 
 @dataclass(frozen=True)
 class SourceDefinition:
@@ -25,7 +27,7 @@ DOCUMENT_SOURCES: tuple[SourceDefinition, ...] = (
         source_type="support_policy",
         status="current",
         scope="global",
-        authority_class="current_policy",
+        authority_class=AuthorityClass.CURRENT_POLICY,
         effective_at=date(2026, 5, 1),
     ),
     SourceDefinition(
@@ -35,7 +37,7 @@ DOCUMENT_SOURCES: tuple[SourceDefinition, ...] = (
         source_type="support_policy",
         status="deprecated",
         scope="global",
-        authority_class="deprecated",
+        authority_class=AuthorityClass.DEPRECATED,
         effective_at=date(2025, 1, 1),
         metadata={"superseded_by": "support_policy_v3"},
     ),
@@ -46,7 +48,7 @@ DOCUMENT_SOURCES: tuple[SourceDefinition, ...] = (
         source_type="sop",
         status="current",
         scope="global",
-        authority_class="current_sop",
+        authority_class=AuthorityClass.CURRENT_DOMAIN_POLICY,
         effective_at=date(2026, 6, 15),
     ),
     SourceDefinition(
@@ -56,7 +58,7 @@ DOCUMENT_SOURCES: tuple[SourceDefinition, ...] = (
         source_type="product_documentation",
         status="current",
         scope="global",
-        authority_class="current_product_documentation",
+        authority_class=AuthorityClass.CURRENT_PRODUCT_DOCS,
     ),
     SourceDefinition(
         source_key="northstar_agreement",
@@ -66,7 +68,7 @@ DOCUMENT_SOURCES: tuple[SourceDefinition, ...] = (
         status="current",
         scope="customer",
         account_id="ACCT-001",
-        authority_class="signed_customer_agreement",
+        authority_class=AuthorityClass.CUSTOMER_AGREEMENT,
         effective_at=date(2026, 1, 1),
     ),
     SourceDefinition(
@@ -77,7 +79,7 @@ DOCUMENT_SOURCES: tuple[SourceDefinition, ...] = (
         status="current",
         scope="customer",
         account_id="ACCT-002",
-        authority_class="signed_customer_agreement",
+        authority_class=AuthorityClass.CUSTOMER_AGREEMENT,
         effective_at=date(2026, 3, 1),
     ),
 )
