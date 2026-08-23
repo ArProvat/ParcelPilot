@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg17
     container_name: parcelpilot-postgres
     restart: always
     environment:
@@ -19,7 +17,7 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  api:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -27,14 +25,40 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file:
-      - ./backend/.env
     environment:
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000"]}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-parcelpilot}:${POSTGRES_PASSWORD:-parcelpilot_secret}@postgres:5432/${POSTGRES_DB:-parcelpilot_db}
+      SECRET_KEY: ${SECRET_KEY:-parcelpilot_dev_secret_key_change_me_in_production_123456789}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-llama3}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      BOOTSTRAP_DATA: ${BOOTSTRAP_DATA:-true}
+      DATA_DIR: /data
     volumes:
-      - ./backend:/app
+      - ./data:/data:ro
     depends_on:
       postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/v1/ready | grep -q 'ready'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: parcelpilot-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
         condition: service_healthy
 
 volumes:

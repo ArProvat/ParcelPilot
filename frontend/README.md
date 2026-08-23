@@ -4,7 +4,13 @@ Small static assessment UI for the ParcelPilot backend.
 
 ## Run
 
-Start the backend first, then serve this directory on port `3000`:
+With Docker Compose, open:
+
+```text
+http://localhost:3000
+```
+
+For local frontend-only development, start the backend first, then serve this directory on port `3000`:
 
 ```powershell
 cd frontend

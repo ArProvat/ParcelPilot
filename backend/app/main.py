@@ -1,11 +1,20 @@
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI
+import logging
+import time
+from uuid import uuid4
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth, chat, decisions, health, threads
 from app.config import settings
+from app.api.health import readiness_status
 from app.schemas.auth import UserContext
 from app.security.auth import get_current_user
+
+
+logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
+logger = logging.getLogger("parcelpilot.api")
 
 
 @asynccontextmanager
@@ -33,6 +42,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or f"req_{uuid4().hex[:12]}"
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = int((time.perf_counter() - started) * 1000)
+        logger.exception(
+            "request_failed",
+            extra={
+                "parcelpilot": {
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "duration_ms": duration_ms,
+                }
+            },
+        )
+        raise
+
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "request_completed",
+        extra={
+            "parcelpilot": {
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": duration_ms,
+            }
+        },
+    )
+    return response
+
 # Include API Routers
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["Health"])
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Auth"])
@@ -43,7 +90,7 @@ app.include_router(decisions.router, prefix=f"{settings.API_V1_STR}/threads", ta
 
 @app.get(f"{settings.API_V1_STR}/ready")
 async def ready():
-    return {"status": "ready"}
+    return await readiness_status()
 
 
 @app.get(f"{settings.API_V1_STR}/me")

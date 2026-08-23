@@ -1,5 +1,5 @@
-from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from typing import List, Literal, Union
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,8 +7,13 @@ class Settings(BaseSettings):
     # App Settings
     PROJECT_NAME: str = "ParcelPilot"
     API_V1_STR: str = "/api/v1"
+    APP_ENV: Literal["development", "test", "production"] = "development"
     DEBUG: bool = True
     ALLOWED_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    LOG_LEVEL: str = "INFO"
+    REQUEST_TIMEOUT_SECONDS: int = 60
+    BOOTSTRAP_DATA: bool = True
+    DATA_DIR: str = "../data"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

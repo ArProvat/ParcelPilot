@@ -1,4 +1,6 @@
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE =
+  window.PARCELPILOT_API_BASE ||
+  `${window.location.protocol}//${window.location.hostname}:8000/api/v1`;
 
 const state = {
   token: localStorage.getItem("parcelpilot_token") || "",

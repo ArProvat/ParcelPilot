@@ -54,8 +54,9 @@ uvicorn app.main:app --reload
 
 ### Docker
 
-```bash
-docker-compose up --build
+```powershell
+cp .env.example .env
+docker compose up --build
 ```
 
 If another local Postgres service already uses port `5432`, run the stack with a different host port:
@@ -65,9 +66,19 @@ $env:POSTGRES_PORT='5433'
 docker compose up -d
 ```
 
+Docker starts:
+
+- Frontend: `http://localhost:3000`
+- FastAPI: `http://localhost:8000`
+- Swagger: `http://localhost:8000/api/v1/docs`
+- Health: `http://localhost:8000/api/v1/health`
+- Readiness: `http://localhost:8000/api/v1/ready`
+
+On startup the API runs Alembic migrations and idempotently imports the workbook and PDF corpus from `data/`.
+
 ### Frontend
 
-The assessment UI is a static frontend served on port `3000`:
+For local frontend-only development, serve the static UI on port `3000`:
 
 ```powershell
 cd frontend
