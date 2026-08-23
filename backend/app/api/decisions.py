@@ -13,7 +13,7 @@ from app.services.escalations import EscalationService
 router = APIRouter()
 
 
-@router.post("/threads/{thread_id}/decisions")
+@router.post("/{thread_id}/decisions")
 async def decide(
     thread_id: str,
     request: DecisionRequest,

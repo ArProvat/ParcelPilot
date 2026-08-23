@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, decisions, health
+from app.api import auth, chat, decisions, health, threads
 from app.config import settings
+from app.schemas.auth import UserContext
+from app.security.auth import get_current_user
 
 
 @asynccontextmanager
@@ -35,7 +37,23 @@ app.add_middleware(
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["Health"])
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Auth"])
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["Chat & Agent"])
-app.include_router(decisions.router, prefix=f"{settings.API_V1_STR}/decisions", tags=["Decisions & HITL"])
+app.include_router(threads.router, prefix=f"{settings.API_V1_STR}/threads", tags=["Threads"])
+app.include_router(decisions.router, prefix=f"{settings.API_V1_STR}/threads", tags=["Decisions & HITL"])
+
+
+@app.get(f"{settings.API_V1_STR}/ready")
+async def ready():
+    return {"status": "ready"}
+
+
+@app.get(f"{settings.API_V1_STR}/me")
+async def me(user: UserContext = Depends(get_current_user)):
+    return {
+        "user_id": user.user_id,
+        "role": user.role,
+        "account_id": user.account_id,
+        "permissions": sorted(user.permissions),
+    }
 
 
 @app.get("/")
