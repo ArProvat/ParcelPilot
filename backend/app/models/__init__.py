@@ -1,5 +1,22 @@
-"""SQLAlchemy Models package."""
-from app.models.user import User
-from app.models.parcel import Parcel
+"""SQLAlchemy models package."""
+from app.models.domain import (
+    Account,
+    AuditEvent,
+    DatasetConfig,
+    DocumentChunk,
+    DocumentSource,
+    Escalation,
+    Order,
+    Ticket,
+)
 
-__all__ = ["User", "Parcel"]
+__all__ = [
+    "Account",
+    "AuditEvent",
+    "DatasetConfig",
+    "DocumentChunk",
+    "DocumentSource",
+    "Escalation",
+    "Order",
+    "Ticket",
+]
