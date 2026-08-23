@@ -1,7 +1,7 @@
 """Embedding providers for document chunks."""
-from collections.abc import Protocol
 from hashlib import blake2b
 import re
+from typing import Protocol
 
 from app.db.types import EMBEDDING_DIMENSION
 
