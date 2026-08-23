@@ -5,6 +5,7 @@ import re
 
 from pypdf import PdfReader
 
+from app.retrieval.authority import EvidenceDomain
 from app.retrieval.source_registry import SourceDefinition
 
 
@@ -117,15 +118,15 @@ def _is_metadata_line(line: str) -> bool:
 def _classify_domain(section: str | None, body: str) -> str:
     text = f"{section or ''} {body}".lower()
     if "cancellation" in text or "cancel" in text:
-        return "cancellation"
+        return EvidenceDomain.CANCELLATION
     if "credit" in text or "failed-pickup" in text or "failed pickup" in text:
-        return "service_credit"
+        return EvidenceDomain.SERVICE_CREDIT
     if "support" in text or "sla" in text or "p1" in text or "p2" in text or "p3" in text or "severity" in text:
-        return "support_sla"
+        return EvidenceDomain.SUPPORT_SLA
     if "bulk upload" in text or "plan" in text:
-        return "plan_entitlement"
+        return EvidenceDomain.PLAN_ENTITLEMENT
     if "known issue" in text or "ki-" in text or "webhook" in text:
-        return "known_issue"
+        return EvidenceDomain.KNOWN_ISSUE
     if "shipment status" in text or "booked" in text or "picked_up" in text:
-        return "shipment_status"
-    return "general"
+        return EvidenceDomain.SHIPMENT_STATUS
+    return EvidenceDomain.GENERAL
