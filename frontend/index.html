@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ParcelPilot Support Copilot</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">ParcelPilot</p>
+          <h1>Support Copilot</h1>
+          <p class="subtitle">
+            Assessment UI for tool use, source authority, RBAC behavior, and human approval.
+          </p>
+        </div>
+
+        <div class="identity-card">
+          <label for="identity">Demo identity</label>
+          <select id="identity">
+            <option value="northstar">Northstar customer</option>
+            <option value="lumenworks">LumenWorks customer</option>
+            <option value="admin">Operations admin</option>
+          </select>
+          <div id="me" class="me">Not signed in</div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="debug-panel">
+          <div class="panel-header">
+            <h2>Developer details</h2>
+            <button id="new-thread" class="secondary-button" type="button">New thread</button>
+          </div>
+
+          <dl class="facts">
+            <div>
+              <dt>Thread</dt>
+              <dd id="thread-id">—</dd>
+            </div>
+            <div>
+              <dt>Backend</dt>
+              <dd id="backend-status">Checking…</dd>
+            </div>
+            <div>
+              <dt>Tools used</dt>
+              <dd id="tool-count">0</dd>
+            </div>
+            <div>
+              <dt>Sources retrieved</dt>
+              <dd id="source-count">0</dd>
+            </div>
+          </dl>
+
+          <div class="prompt-list">
+            <h3>Demo prompts</h3>
+            <button class="prompt" data-prompt="Can I cancel ORD-1001 without a fee?">
+              Northstar cancellation
+            </button>
+            <button class="prompt" data-prompt="Check TKT-501 and escalate it if needed.">
+              SLA + approval
+            </button>
+            <button class="prompt" data-prompt="Tell me everything about ORD-2001.">
+              Cross-account check
+            </button>
+            <button class="prompt" data-prompt="Why is my 4,000-row upload failing?">
+              Product known issue
+            </button>
+          </div>
+        </aside>
+
+        <section class="chat-card">
+          <div id="messages" class="messages" aria-live="polite"></div>
+
+          <form id="chat-form" class="composer">
+            <input
+              id="message-input"
+              name="message"
+              autocomplete="off"
+              placeholder="Ask ParcelPilot about orders, tickets, policies, credits, or escalations…"
+            />
+            <button id="send-button" type="submit">Send</button>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
