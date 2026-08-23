@@ -1,0 +1,59 @@
+# ParcelPilot
+
+ParcelPilot is an AI-powered logistics, customer support, and decision intelligence agent platform. It leverages Retrieval-Augmented Generation (RAG), structured tool calling with LangGraph, authoritative source precedence resolution, and human-in-the-loop (HITL) workflows.
+
+## Features
+
+- **Agentic Decision Engine**: LangGraph-powered conversational agent with tool execution.
+- **Authoritative Retrieval**: Multi-source knowledge retriever resolving conflicting policies with explicit authority precedence.
+- **Workflow & Ingestion Pipeline**: Ingestion of unstructured PDF documentation and structured assessment workbooks.
+- **Security & Authorization**: Role-based access control (RBAC), JWT authentication, and policy enforcement.
+- **Human-in-the-Loop (HITL)**: Service credit approvals, escalation handling, and cancellation workflows.
+
+## Project Structure
+
+```text
+parcelpilot/
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── api/
+│   │   ├── agent/
+│   │   ├── tools/
+│   │   ├── retrieval/
+│   │   ├── db/
+│   │   ├── ingestion/
+│   │   └── security/
+│   ├── tests/
+│   ├── Dockerfile
+│   └── pyproject.toml
+│
+├── frontend/
+│
+├── data/
+│   ├── documents/
+│   ├── ParcelPilot_Assessment_Data.xlsx
+│   └── source_manifest.yaml
+│
+├── docker-compose.yml
+├── README.md
+├── ARCHITECTURE.md
+└── PRODUCT.md
+```
+
+## Quick Start
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+### Docker
+
+```bash
+docker-compose up --build
+```

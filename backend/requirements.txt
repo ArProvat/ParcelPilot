@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+pydantic-settings
+asyncpg
+passlib[bcrypt]
+python-jose[cryptography]
+langchain
+langgraph-checkpoint-postgres 
+psycopg[binary]
+langchain-ollama
+langchain-openai
