@@ -15,7 +15,10 @@ openpyxl
 pypdf
 tzdata
 pgvector
-sentence-transformers
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu
+transformers>=4.51.0,<5
+sentence-transformers==2.7.0
 pypdf
 pytest
 pytest-asyncio

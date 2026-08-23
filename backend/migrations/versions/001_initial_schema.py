@@ -66,7 +66,7 @@ def upgrade() -> None:
         sa.Column("page", sa.Integer(), nullable=True),
         sa.Column("section", sa.String(length=255), nullable=True),
         sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("embedding", Vector(384), nullable=True),
+        sa.Column("embedding", Vector(1024), nullable=True),
         sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.ForeignKeyConstraint(["document_id"], ["document_sources.id"]),
         sa.PrimaryKeyConstraint("id"),

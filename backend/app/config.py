@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     BOOTSTRAP_DATA: bool = True
     DATA_DIR: str = "../data"
     EMBEDDING_PROVIDER: Literal["sentence-transformers", "hash"] = "sentence-transformers"
-    EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+    EMBEDDING_MODEL_NAME: str = "Qwen/Qwen3-Embedding-0.6B"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

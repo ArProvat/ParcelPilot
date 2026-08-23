@@ -42,7 +42,7 @@ class SentenceTransformersEmbeddingProvider:
 
     def __init__(
         self,
-        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+        model_name: str = "Qwen/Qwen3-Embedding-0.6B",
         dimensions: int = EMBEDDING_DIMENSION,
     ) -> None:
         try:
