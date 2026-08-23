@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import DocumentChunk, DocumentSource
 from app.db.types import EMBEDDING_DIMENSION
 from app.retrieval.authority import AuthorityClass, EvidenceDomain, authority_rank
-from app.retrieval.embeddings import EmbeddingProvider, HashEmbeddingProvider
+from app.retrieval.embeddings import EmbeddingProvider, get_embedding_provider
 from app.schemas.auth import UserContext
 from app.schemas.evidence import Evidence, EvidenceSet
 from app.security.authorization import require_permission
@@ -35,7 +35,7 @@ class DocumentRetriever:
         embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
         self.session = session
-        self.embedding_provider = embedding_provider or HashEmbeddingProvider()
+        self.embedding_provider = embedding_provider or get_embedding_provider()
 
     async def search(
         self,

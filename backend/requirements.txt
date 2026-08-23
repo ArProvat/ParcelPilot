@@ -15,6 +15,7 @@ openpyxl
 pypdf
 tzdata
 pgvector
+sentence-transformers
 pypdf
 pytest
 pytest-asyncio

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     REQUEST_TIMEOUT_SECONDS: int = 60
     BOOTSTRAP_DATA: bool = True
     DATA_DIR: str = "../data"
+    EMBEDDING_PROVIDER: Literal["sentence-transformers", "hash"] = "sentence-transformers"
+    EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
