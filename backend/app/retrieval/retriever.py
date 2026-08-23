@@ -44,6 +44,7 @@ class DocumentRetriever:
         include_deprecated: bool = False,
         limit: int = DEFAULT_FINAL_LIMIT,
         vector_candidates: int = DEFAULT_VECTOR_CANDIDATES,
+        domain: str | None = None,
     ) -> EvidenceSet:
         """Return authority-ranked evidence available to the authenticated user."""
         if context is None:
@@ -57,8 +58,8 @@ class DocumentRetriever:
         require_permission(context, "documents:read")
 
         normalized_query = _normalize_query(query)
-        domain = _infer_domain(normalized_query)
-        retrieval_query = _expand_query_for_domain(normalized_query, domain)
+        evidence_domain = EvidenceDomain(domain) if domain is not None else _infer_domain(normalized_query)
+        retrieval_query = _expand_query_for_domain(normalized_query, evidence_domain)
         candidates = await self._retrieve_candidates(
             retrieval_query,
             context,
@@ -66,11 +67,11 @@ class DocumentRetriever:
             vector_candidates=vector_candidates,
         )
 
-        scored = self._score_candidates(retrieval_query, domain, candidates)
-        ranked = _rank_and_dedupe(scored, domain)
+        scored = self._score_candidates(retrieval_query, evidence_domain, candidates)
+        ranked = _rank_and_dedupe(scored, evidence_domain)
         evidence = [_to_evidence(item) for item in ranked[:limit]]
 
-        return _build_evidence_set(evidence, domain)
+        return _build_evidence_set(evidence, evidence_domain)
 
     async def _retrieve_candidates(
         self,

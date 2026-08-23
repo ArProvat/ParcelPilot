@@ -16,6 +16,12 @@ class EscalationRepository:
         await self.session.flush()
         return escalation
 
+    async def get_by_idempotency_key(self, idempotency_key: str) -> Escalation | None:
+        result = await self.session.execute(
+            select(Escalation).where(Escalation.idempotency_key == idempotency_key)
+        )
+        return result.scalar_one_or_none()
+
     async def create_authorized(self, escalation: Escalation, user: UserContext) -> Escalation:
         require_permission(user, "escalations:create")
         if not can_access_account(user, escalation.account_id):
