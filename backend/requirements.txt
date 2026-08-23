@@ -12,6 +12,7 @@ langgraph-checkpoint-postgres
 psycopg[binary]
 langchain-ollama
 openpyxl
+pypdf
 tzdata
 pgvector
 pypdf

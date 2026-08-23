@@ -8,6 +8,8 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "001_initial_schema"
@@ -17,6 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
     op.create_table(
         "accounts",
         sa.Column("id", sa.String(length=32), nullable=False),
@@ -30,6 +34,45 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_accounts_plan"), "accounts", ["plan"], unique=False)
+
+    op.create_table(
+        "document_sources",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("source_key", sa.String(length=100), nullable=False),
+        sa.Column("filename", sa.String(length=255), nullable=False),
+        sa.Column("source_name", sa.String(length=255), nullable=False),
+        sa.Column("source_type", sa.String(length=80), nullable=False),
+        sa.Column("status", sa.String(length=30), nullable=False),
+        sa.Column("scope", sa.String(length=30), nullable=False),
+        sa.Column("account_id", sa.String(length=32), nullable=True),
+        sa.Column("authority_class", sa.String(length=80), nullable=False),
+        sa.Column("effective_at", sa.Date(), nullable=True),
+        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.ForeignKeyConstraint(["account_id"], ["accounts.id"]),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("source_key"),
+    )
+    op.create_index(op.f("ix_document_sources_account_id"), "document_sources", ["account_id"], unique=False)
+    op.create_index(op.f("ix_document_sources_authority_class"), "document_sources", ["authority_class"], unique=False)
+    op.create_index(op.f("ix_document_sources_scope"), "document_sources", ["scope"], unique=False)
+    op.create_index(op.f("ix_document_sources_source_key"), "document_sources", ["source_key"], unique=False)
+    op.create_index(op.f("ix_document_sources_source_type"), "document_sources", ["source_type"], unique=False)
+    op.create_index(op.f("ix_document_sources_status"), "document_sources", ["status"], unique=False)
+
+    op.create_table(
+        "document_chunks",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("document_id", sa.Uuid(), nullable=False),
+        sa.Column("page", sa.Integer(), nullable=True),
+        sa.Column("section", sa.String(length=255), nullable=True),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("embedding", Vector(384), nullable=True),
+        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.ForeignKeyConstraint(["document_id"], ["document_sources.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_document_chunks_document_id"), "document_chunks", ["document_id"], unique=False)
+    op.create_index(op.f("ix_document_chunks_section"), "document_chunks", ["section"], unique=False)
 
     op.create_table(
         "dataset_config",
@@ -120,6 +163,16 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index(op.f("ix_document_chunks_section"), table_name="document_chunks")
+    op.drop_index(op.f("ix_document_chunks_document_id"), table_name="document_chunks")
+    op.drop_table("document_chunks")
+    op.drop_index(op.f("ix_document_sources_status"), table_name="document_sources")
+    op.drop_index(op.f("ix_document_sources_source_type"), table_name="document_sources")
+    op.drop_index(op.f("ix_document_sources_source_key"), table_name="document_sources")
+    op.drop_index(op.f("ix_document_sources_scope"), table_name="document_sources")
+    op.drop_index(op.f("ix_document_sources_authority_class"), table_name="document_sources")
+    op.drop_index(op.f("ix_document_sources_account_id"), table_name="document_sources")
+    op.drop_table("document_sources")
     op.drop_index(op.f("ix_escalations_account_id"), table_name="escalations")
     op.drop_table("escalations")
     op.drop_index(op.f("ix_audit_events_user_id"), table_name="audit_events")
