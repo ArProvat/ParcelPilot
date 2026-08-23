@@ -1,0 +1,22 @@
+version: "1.0"
+sources:
+  - id: global_sla_policy
+    name: "Global SLA and Delivery Policy"
+    type: "document"
+    path: "data/documents/Global_SLA_Policy.pdf"
+    authority_level: 100
+    description: "Highest precedence for service level agreements, refunds, and delivery promises."
+
+  - id: carrier_guidelines
+    name: "Carrier Operating Guidelines"
+    type: "document"
+    path: "data/documents/Carrier_Guidelines.pdf"
+    authority_level: 80
+    description: "Operational rules and constraints by carrier."
+
+  - id: internal_kb
+    name: "Customer Support SOP & Knowledge Base"
+    type: "document"
+    path: "data/documents/Customer_Support_SOP.pdf"
+    authority_level: 60
+    description: "Standard operating procedures for customer dispute resolution."

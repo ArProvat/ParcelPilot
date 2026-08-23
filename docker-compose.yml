@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: parcelpilot-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-parcelpilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parcelpilot_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-parcelpilot_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-parcelpilot} -d ${POSTGRES_DB:-parcelpilot_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: parcelpilot-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
