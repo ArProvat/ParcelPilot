@@ -32,6 +32,11 @@ class ListAccountTicketsInput(BaseModel):
     status: Literal["open", "closed", "all"] = "open"
 
 
+class SearchDocumentsInput(BaseModel):
+    query: str
+    domain: str | None = None
+
+
 class OrderToolResult(ToolResult):
     found: bool
     order_id: str | None = None
@@ -86,3 +91,23 @@ class TicketSummary(BaseModel):
 
 class ListAccountTicketsResult(ToolResult):
     tickets: list[TicketSummary]
+
+
+class EvidenceItem(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    source_id: str
+    source_name: str
+    source_type: str
+    section: str | None = None
+    page: int | None = None
+    authority_class: str
+    domain: str
+    content: str
+
+
+class DocumentSearchResult(ToolResult):
+    evidence: list[EvidenceItem]
+    conflict_detected: bool
+    requires_verification: bool
+    resolution_note: str | None = None

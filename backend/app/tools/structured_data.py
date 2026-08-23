@@ -26,24 +26,31 @@ def create_structured_data_tools(
         StructuredTool.from_function(
             coroutine=_get_order_tool(user, session_factory),
             name="get_order",
-            description="Look up accessible operational facts for one order by order_id.",
+            description=(
+                "Retrieve operational facts about a shipment/order. Use this for shipment status, booking time, "
+                "pickup window, pickup confirmation, shipment fee, cancellation request, carrier fault, or "
+                "customer fault. This tool does not determine policy eligibility."
+            ),
             args_schema=GetOrderInput,
         ),
         StructuredTool.from_function(
             coroutine=_get_ticket_tool(user, session_factory),
             name="get_ticket",
-            description="Look up an accessible support ticket by ticket_id.",
+            description=(
+                "Retrieve an accessible support ticket by ticket_id. Historical resolutions are returned only "
+                "as context and must not override current policy, SOPs, or signed agreements."
+            ),
             args_schema=GetTicketInput,
         ),
         StructuredTool.from_function(
             coroutine=_get_my_account_tool(user, session_factory),
             name="get_my_account",
-            description="Look up the authenticated customer's own account.",
+            description="Retrieve the authenticated customer's own account profile and plan facts.",
         ),
         StructuredTool.from_function(
             coroutine=_list_account_tickets_tool(user, session_factory),
             name="list_account_tickets",
-            description="List accessible account tickets using status open, closed, or all.",
+            description="List tickets accessible to the authenticated user using status open, closed, or all.",
             args_schema=ListAccountTicketsInput,
         ),
     ]
