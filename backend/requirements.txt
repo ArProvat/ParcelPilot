@@ -10,4 +10,5 @@ langchain
 langgraph-checkpoint-postgres 
 psycopg[binary]
 langchain-ollama
-langchain-openai
+openpyxl
+tzdata
