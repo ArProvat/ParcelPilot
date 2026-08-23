@@ -37,6 +37,14 @@ class SearchDocumentsInput(BaseModel):
     domain: str | None = None
 
 
+class EvaluateOrderInput(BaseModel):
+    order_id: str
+
+
+class EvaluateTicketInput(BaseModel):
+    ticket_id: str
+
+
 class OrderToolResult(ToolResult):
     found: bool
     order_id: str | None = None

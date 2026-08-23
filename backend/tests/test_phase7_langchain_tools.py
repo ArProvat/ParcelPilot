@@ -57,7 +57,16 @@ def northstar_user() -> UserContext:
 def test_agent_tool_registry_exposes_safe_capabilities(session_factory) -> None:
     tools = {tool.name: tool for tool in create_agent_tools(northstar_user(), session_factory=session_factory)}
 
-    assert set(tools) == {"search_documents", "get_order", "get_ticket", "get_my_account", "list_account_tickets"}
+    assert set(tools) == {
+        "search_documents",
+        "get_order",
+        "get_ticket",
+        "get_my_account",
+        "list_account_tickets",
+        "evaluate_cancellation",
+        "evaluate_service_credit",
+        "evaluate_ticket_sla",
+    }
     assert set(tools["get_order"].args_schema.model_fields) == {"order_id"}
     assert set(tools["get_ticket"].args_schema.model_fields) == {"ticket_id"}
     assert set(tools["search_documents"].args_schema.model_fields) == {"query", "domain"}
