@@ -86,15 +86,31 @@ class Escalation(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True, nullable=False)
-    ticket_id: Mapped[str | None] = mapped_column(ForeignKey("tickets.id"))
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("tickets.id"), nullable=False)
     priority: Mapped[str] = mapped_column(String(30), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="open", nullable=False)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
 
     account: Mapped[Account] = relationship(back_populates="escalations")
     ticket: Mapped[Ticket | None] = relationship(back_populates="escalations")
+
+
+class PendingAction(Base):
+    __tablename__ = "pending_actions"
+
+    action_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    thread_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id"), index=True)
+    arguments: Mapped[dict[str, Any]] = mapped_column(metadata_json_type, default=dict, nullable=False)
+    result: Mapped[dict[str, Any] | None] = mapped_column(metadata_json_type)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class AuditEvent(Base):

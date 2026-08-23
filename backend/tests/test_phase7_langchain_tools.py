@@ -66,11 +66,13 @@ def test_agent_tool_registry_exposes_safe_capabilities(session_factory) -> None:
         "evaluate_cancellation",
         "evaluate_service_credit",
         "evaluate_ticket_sla",
+        "create_escalation",
     }
     assert set(tools["get_order"].args_schema.model_fields) == {"order_id"}
     assert set(tools["get_ticket"].args_schema.model_fields) == {"ticket_id"}
     assert set(tools["search_documents"].args_schema.model_fields) == {"query", "domain"}
     assert "account_id" not in tools["search_documents"].args_schema.model_fields
+    assert set(tools["create_escalation"].args_schema.model_fields) == {"ticket_id", "priority", "reason"}
     assert "does not determine policy eligibility" in tools["get_order"].description
     assert "Do not use this for order or ticket records" in tools["search_documents"].description
 

@@ -1,6 +1,7 @@
 """Typed result objects for structured-data tools."""
 from datetime import datetime
 from decimal import Decimal
+from uuid import UUID
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -43,6 +44,12 @@ class EvaluateOrderInput(BaseModel):
 
 class EvaluateTicketInput(BaseModel):
     ticket_id: str
+
+
+class CreateEscalationInput(BaseModel):
+    ticket_id: str
+    priority: Literal["normal", "high", "urgent"]
+    reason: str
 
 
 class OrderToolResult(ToolResult):
@@ -119,3 +126,28 @@ class DocumentSearchResult(ToolResult):
     conflict_detected: bool
     requires_verification: bool
     resolution_note: str | None = None
+
+
+class EscalationAction(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    tool: str
+    arguments: CreateEscalationInput
+
+
+class EscalationResult(ToolResult):
+    created: bool
+    escalation_id: UUID | None = None
+    ticket_id: str | None = None
+    priority: str | None = None
+    status: str | None = None
+    message: str
+
+
+class PendingActionResult(ToolResult):
+    type: Literal["approval_required", "approved", "rejected", "executed"]
+    thread_id: str
+    action_id: UUID
+    action: EscalationAction
+    message: str
+    escalation: EscalationResult | None = None

@@ -7,6 +7,7 @@ from app.models.domain import (
     DocumentSource,
     Escalation,
     Order,
+    PendingAction,
     Ticket,
 )
 
@@ -18,5 +19,6 @@ __all__ = [
     "DocumentSource",
     "Escalation",
     "Order",
+    "PendingAction",
     "Ticket",
 ]

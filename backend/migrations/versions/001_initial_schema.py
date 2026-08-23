@@ -146,20 +146,44 @@ def upgrade() -> None:
     op.create_index(op.f("ix_audit_events_user_id"), "audit_events", ["user_id"], unique=False)
 
     op.create_table(
+        "pending_actions",
+        sa.Column("action_id", sa.Uuid(), nullable=False),
+        sa.Column("thread_id", sa.String(length=255), nullable=False),
+        sa.Column("tool_name", sa.String(length=255), nullable=False),
+        sa.Column("status", sa.String(length=30), nullable=False),
+        sa.Column("user_id", sa.String(length=255), nullable=False),
+        sa.Column("account_id", sa.String(length=32), nullable=True),
+        sa.Column("arguments", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("result", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["account_id"], ["accounts.id"]),
+        sa.PrimaryKeyConstraint("action_id"),
+    )
+    op.create_index(op.f("ix_pending_actions_account_id"), "pending_actions", ["account_id"], unique=False)
+    op.create_index(op.f("ix_pending_actions_status"), "pending_actions", ["status"], unique=False)
+    op.create_index(op.f("ix_pending_actions_thread_id"), "pending_actions", ["thread_id"], unique=False)
+    op.create_index(op.f("ix_pending_actions_tool_name"), "pending_actions", ["tool_name"], unique=False)
+    op.create_index(op.f("ix_pending_actions_user_id"), "pending_actions", ["user_id"], unique=False)
+
+    op.create_table(
         "escalations",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("account_id", sa.String(length=32), nullable=False),
-        sa.Column("ticket_id", sa.String(length=32), nullable=True),
+        sa.Column("ticket_id", sa.String(length=32), nullable=False),
         sa.Column("priority", sa.String(length=30), nullable=False),
         sa.Column("reason", sa.Text(), nullable=False),
         sa.Column("status", sa.String(length=30), nullable=False),
         sa.Column("created_by", sa.String(length=255), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("idempotency_key", sa.String(length=120), nullable=False),
         sa.ForeignKeyConstraint(["account_id"], ["accounts.id"]),
         sa.ForeignKeyConstraint(["ticket_id"], ["tickets.id"]),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("idempotency_key"),
     )
     op.create_index(op.f("ix_escalations_account_id"), "escalations", ["account_id"], unique=False)
+    op.create_index(op.f("ix_escalations_idempotency_key"), "escalations", ["idempotency_key"], unique=False)
 
 
 def downgrade() -> None:
@@ -173,8 +197,15 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_document_sources_authority_class"), table_name="document_sources")
     op.drop_index(op.f("ix_document_sources_account_id"), table_name="document_sources")
     op.drop_table("document_sources")
+    op.drop_index(op.f("ix_escalations_idempotency_key"), table_name="escalations")
     op.drop_index(op.f("ix_escalations_account_id"), table_name="escalations")
     op.drop_table("escalations")
+    op.drop_index(op.f("ix_pending_actions_user_id"), table_name="pending_actions")
+    op.drop_index(op.f("ix_pending_actions_tool_name"), table_name="pending_actions")
+    op.drop_index(op.f("ix_pending_actions_thread_id"), table_name="pending_actions")
+    op.drop_index(op.f("ix_pending_actions_status"), table_name="pending_actions")
+    op.drop_index(op.f("ix_pending_actions_account_id"), table_name="pending_actions")
+    op.drop_table("pending_actions")
     op.drop_index(op.f("ix_audit_events_user_id"), table_name="audit_events")
     op.drop_index(op.f("ix_audit_events_thread_id"), table_name="audit_events")
     op.drop_index(op.f("ix_audit_events_event_type"), table_name="audit_events")
