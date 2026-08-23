@@ -66,7 +66,7 @@ def upgrade() -> None:
         sa.Column("page", sa.Integer(), nullable=True),
         sa.Column("section", sa.String(length=255), nullable=True),
         sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("embedding", Vector(384), nullable=True),
+        sa.Column("embedding", Vector(1024), nullable=True),
         sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.ForeignKeyConstraint(["document_id"], ["document_sources.id"]),
         sa.PrimaryKeyConstraint("id"),
@@ -83,6 +83,33 @@ def upgrade() -> None:
         sa.Column("important_note", sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
+
+    op.create_table(
+        "conversation_threads",
+        sa.Column("id", sa.String(length=120), nullable=False),
+        sa.Column("user_id", sa.String(length=255), nullable=False),
+        sa.Column("account_id", sa.String(length=32), nullable=True),
+        sa.Column("title", sa.String(length=255), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["account_id"], ["accounts.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_conversation_threads_account_id"), "conversation_threads", ["account_id"], unique=False)
+    op.create_index(op.f("ix_conversation_threads_user_id"), "conversation_threads", ["user_id"], unique=False)
+
+    op.create_table(
+        "conversation_messages",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("thread_id", sa.String(length=120), nullable=False),
+        sa.Column("role", sa.String(length=30), nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["thread_id"], ["conversation_threads.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_conversation_messages_thread_id"), "conversation_messages", ["thread_id"], unique=False)
 
     op.create_table(
         "orders",
@@ -216,6 +243,11 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_tickets_created_at"), table_name="tickets")
     op.drop_index(op.f("ix_tickets_account_id"), table_name="tickets")
     op.drop_table("tickets")
+    op.drop_index(op.f("ix_conversation_messages_thread_id"), table_name="conversation_messages")
+    op.drop_table("conversation_messages")
+    op.drop_index(op.f("ix_conversation_threads_user_id"), table_name="conversation_threads")
+    op.drop_index(op.f("ix_conversation_threads_account_id"), table_name="conversation_threads")
+    op.drop_table("conversation_threads")
     op.drop_index(op.f("ix_orders_status"), table_name="orders")
     op.drop_index(op.f("ix_orders_account_id"), table_name="orders")
     op.drop_table("orders")

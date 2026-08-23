@@ -1,5 +1,5 @@
-from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from typing import List, Literal, Union
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,8 +7,15 @@ class Settings(BaseSettings):
     # App Settings
     PROJECT_NAME: str = "ParcelPilot"
     API_V1_STR: str = "/api/v1"
+    APP_ENV: Literal["development", "test", "production"] = "development"
     DEBUG: bool = True
     ALLOWED_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    LOG_LEVEL: str = "INFO"
+    REQUEST_TIMEOUT_SECONDS: int = 60
+    BOOTSTRAP_DATA: bool = True
+    DATA_DIR: str = "../data"
+    EMBEDDING_PROVIDER: Literal["sentence-transformers", "hash"] = "sentence-transformers"
+    EMBEDDING_MODEL_NAME: str = "Qwen/Qwen3-Embedding-0.6B"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -34,10 +41,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
 
     # LLM & AI Agent Settings (LangChain / LangGraph)
-    LLM_PROVIDER: str = "ollama"  # "ollama" or "openai"
+    LLM_PROVIDER: Literal["ollama", "openai", "openrouter"] = "ollama"
     LLM_MODEL: str = "llama3"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str | None = None
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_SITE_URL: str = "http://localhost:3000"
+    OPENROUTER_APP_NAME: str = "ParcelPilot"
 
     model_config = SettingsConfigDict(
         env_file=".env",

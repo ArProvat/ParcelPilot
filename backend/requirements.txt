@@ -14,7 +14,22 @@ pgvector
 
 pydantic
 pydantic-settings
-
+asyncpg
+passlib[bcrypt]
+python-jose[cryptography]
+langchain
+langchain-openai
+langgraph-checkpoint-postgres 
+psycopg[binary]
+langchain-ollama
+openpyxl
+pypdf
+tzdata
+pgvector
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu
+transformers>=4.51.0,<5
+sentence-transformers==2.7.0
 pypdf
 openpyxl
 
@@ -24,3 +39,5 @@ passlib
 pytest
 pytest-asyncio
 httpx
+aiosqlite
+python-multipart

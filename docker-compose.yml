@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg17
     container_name: parcelpilot-postgres
     restart: always
     environment:
@@ -19,21 +17,60 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: parcelpilot-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
-    env_file:
-      - ./backend/.env
+      - "${API_PORT:-8000}:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000","http://localhost:3001","http://127.0.0.1:3001"]}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-parcelpilot}:${POSTGRES_PASSWORD:-parcelpilot_secret}@postgres:5432/${POSTGRES_DB:-parcelpilot_db}
+      SECRET_KEY: ${SECRET_KEY:-parcelpilot_dev_secret_key_change_me_in_production_123456789}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-llama3}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-http://localhost:3000}
+      OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME:-ParcelPilot}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      BOOTSTRAP_DATA: ${BOOTSTRAP_DATA:-true}
+      DATA_DIR: /data
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-sentence-transformers}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-Qwen/Qwen3-Embedding-0.6B}
+      HF_HOME: /models/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /models/sentence-transformers
     volumes:
-      - ./backend:/app
+      - ./data:/data:ro
+      - hf_cache:/models
     depends_on:
       postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/v1/ready | grep -q '\"status\":\"ready\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: parcelpilot-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      api:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  hf_cache:

@@ -5,7 +5,7 @@ from uuid import NAMESPACE_URL, uuid5
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DocumentChunk, DocumentSource
-from app.retrieval.embeddings import EmbeddingProvider, HashEmbeddingProvider
+from app.retrieval.embeddings import EmbeddingProvider, get_embedding_provider
 from app.retrieval.pdf_parser import ParsedChunk, parse_pdf_sections
 from app.retrieval.source_registry import DOCUMENT_SOURCES, SourceDefinition
 
@@ -26,7 +26,7 @@ async def import_document_corpus(
     documents_dir: str | Path,
     embedding_provider: EmbeddingProvider | None = None,
 ) -> list[ParsedChunk]:
-    provider = embedding_provider or HashEmbeddingProvider()
+    provider = embedding_provider or get_embedding_provider()
     base_path = Path(documents_dir)
     parsed_chunks: list[ParsedChunk] = []
 

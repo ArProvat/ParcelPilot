@@ -7,7 +7,7 @@ except ImportError:  # pragma: no cover - exercised only without optional pgvect
     Vector = None
 
 
-EMBEDDING_DIMENSION = 384
+EMBEDDING_DIMENSION = 1024
 
 
 def embedding_column_type():

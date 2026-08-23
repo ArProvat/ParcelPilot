@@ -14,3 +14,4 @@ __all__ = [
     "TicketImport",
     "WorkbookData",
 ]
+"""Schema package."""
