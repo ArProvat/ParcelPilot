@@ -41,10 +41,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
 
     # LLM & AI Agent Settings (LangChain / LangGraph)
-    LLM_PROVIDER: str = "ollama"  # "ollama" or "openai"
+    LLM_PROVIDER: Literal["ollama", "openai", "openrouter"] = "ollama"
     LLM_MODEL: str = "llama3"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str | None = None
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_SITE_URL: str = "http://localhost:3000"
+    OPENROUTER_APP_NAME: str = "ParcelPilot"
 
     model_config = SettingsConfigDict(
         env_file=".env",

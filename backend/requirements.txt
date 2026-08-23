@@ -8,6 +8,7 @@ asyncpg
 passlib[bcrypt]
 python-jose[cryptography]
 langchain
+langchain-openai
 langgraph-checkpoint-postgres 
 psycopg[binary]
 langchain-ollama
@@ -24,3 +25,4 @@ pytest
 pytest-asyncio
 httpx
 aiosqlite
+python-multipart

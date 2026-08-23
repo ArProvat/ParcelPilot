@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, decisions, health, threads
+from app.api import auth, chat, decisions, documents, health, threads
 from app.config import settings
 from app.api.health import readiness_status
 from app.schemas.auth import UserContext
@@ -86,6 +86,7 @@ app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Aut
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["Chat & Agent"])
 app.include_router(threads.router, prefix=f"{settings.API_V1_STR}/threads", tags=["Threads"])
 app.include_router(decisions.router, prefix=f"{settings.API_V1_STR}/threads", tags=["Decisions & HITL"])
+app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["Knowledge Base"])
 
 
 @app.get(f"{settings.API_V1_STR}/ready")

@@ -87,6 +87,13 @@ docker compose up --build
 
 For example, with both overrides the frontend is available at `http://localhost:3001` while the API remains at `http://localhost:8000`.
 
+If another local app is already responding on API port `8000`, override the API host port:
+
+```powershell
+$env:API_PORT='8001'
+docker compose up -d api
+```
+
 ## Environment variables
 
 Copy `.env.example` to `.env`.
@@ -98,13 +105,26 @@ Important settings:
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Local PostgreSQL credentials |
 | `POSTGRES_PORT` | Host port mapped to the PostgreSQL container |
 | `FRONTEND_PORT` | Host port mapped to the frontend container |
+| `API_PORT` | Host port mapped to the FastAPI container |
 | `SECRET_KEY` | Development signing secret for mocked auth tokens |
 | `ALLOWED_ORIGINS` | CORS origins for the frontend |
 | `BOOTSTRAP_DATA` | Runs idempotent data/bootstrap ingestion when true |
 | `LLM_PROVIDER`, `LLM_MODEL` | Chat model configuration |
 | `OPENAI_API_KEY` | Optional, only needed if using OpenAI-backed chat |
+| `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` | Optional OpenRouter configuration when `LLM_PROVIDER=openrouter` |
 | `EMBEDDING_PROVIDER` | Runtime embedding provider |
 | `EMBEDDING_MODEL_NAME` | Local Hugging Face sentence-transformers model |
+
+OpenRouter example:
+
+```text
+LLM_PROVIDER=openrouter
+LLM_MODEL=z-ai/glm-5.2:free
+OPENROUTER_API_KEY=...
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+```
+
+Do not duplicate `OPENROUTER_API_KEY` in `.env`; if the same key appears twice, the last value wins.
 
 The Docker runtime is configured for local embeddings:
 

@@ -1,4 +1,4 @@
 """API endpoints package."""
-from app.api import auth, chat, decisions, health, threads
+from app.api import auth, chat, decisions, documents, health, threads
 
-__all__ = ["auth", "chat", "decisions", "health", "threads"]
+__all__ = ["auth", "chat", "decisions", "documents", "health", "threads"]

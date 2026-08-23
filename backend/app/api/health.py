@@ -2,6 +2,7 @@
 from fastapi import APIRouter
 from sqlalchemy import func, select, text
 
+from app.agent import llm_config_status
 from app.models import Account, DatasetConfig, DocumentChunk
 
 
@@ -16,6 +17,11 @@ async def health():
 @router.get("/ready")
 async def ready():
     return await readiness_status()
+
+
+@router.get("/llm-config")
+async def llm_config():
+    return llm_config_status()
 
 
 async def readiness_status() -> dict:
