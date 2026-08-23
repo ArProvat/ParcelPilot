@@ -3,6 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Escalation
+from app.schemas.auth import UserContext
+from app.security.authorization import AuthorizationError, can_access_account, require_permission
 
 
 class EscalationRepository:
@@ -13,6 +15,12 @@ class EscalationRepository:
         self.session.add(escalation)
         await self.session.flush()
         return escalation
+
+    async def create_authorized(self, escalation: Escalation, user: UserContext) -> Escalation:
+        require_permission(user, "escalations:create")
+        if not can_access_account(user, escalation.account_id):
+            raise AuthorizationError("Cannot create escalation for inaccessible account.")
+        return await self.create(escalation)
 
     async def list_for_account(self, account_id: str) -> list[Escalation]:
         result = await self.session.execute(

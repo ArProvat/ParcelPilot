@@ -53,7 +53,12 @@ async def test_northstar_cancellation_prefers_customer_agreement(session: AsyncS
 
     evidence_set = await DocumentRetriever(session).search(
         query="Can Northstar cancel a booked shipment without a cancellation fee?",
-        context=UserContext(user_id="USR-001", role="customer", account_id="ACCT-001"),
+        context=UserContext(
+            user_id="USR-001",
+            role="customer",
+            account_id="ACCT-001",
+            permissions=frozenset({"documents:read"}),
+        ),
     )
 
     source_ids = [item.source_id for item in evidence_set.evidence]
@@ -70,7 +75,12 @@ async def test_lumenworks_service_credit_returns_agreement_plus_sop(session: Asy
 
     evidence_set = await DocumentRetriever(session).search(
         query="LumenWorks failed pickup credit",
-        context=UserContext(user_id="USR-002", role="customer", account_id="ACCT-002"),
+        context=UserContext(
+            user_id="USR-002",
+            role="customer",
+            account_id="ACCT-002",
+            permissions=frozenset({"documents:read"}),
+        ),
     )
 
     source_ids = [item.source_id for item in evidence_set.evidence]
@@ -86,7 +96,12 @@ async def test_enterprise_p1_sla_uses_current_policy_for_account_without_overrid
 
     evidence_set = await DocumentRetriever(session).search(
         query="Enterprise P1 SLA",
-        context=UserContext(user_id="USR-004", role="customer", account_id="ACCT-004"),
+        context=UserContext(
+            user_id="USR-004",
+            role="customer",
+            account_id="ACCT-004",
+            permissions=frozenset({"documents:read"}),
+        ),
     )
 
     assert evidence_set.evidence[0].source_id == "support_policy_v3"
@@ -98,7 +113,12 @@ async def test_bulk_upload_limit_uses_product_operations_guide(session: AsyncSes
 
     evidence_set = await DocumentRetriever(session).search(
         query="Bulk upload limit",
-        context=UserContext(user_id="USR-004", role="customer", account_id="ACCT-004"),
+        context=UserContext(
+            user_id="USR-004",
+            role="customer",
+            account_id="ACCT-004",
+            permissions=frozenset({"documents:read"}),
+        ),
     )
 
     assert evidence_set.evidence[0].source_id == "product_operations_guide"
@@ -112,7 +132,12 @@ async def test_current_sla_request_never_uses_policy_v2_by_default(
 
     evidence_set = await DocumentRetriever(session).search(
         query="current P1 SLA",
-        context=UserContext(user_id="USR-004", role="customer", account_id="ACCT-004"),
+        context=UserContext(
+            user_id="USR-004",
+            role="customer",
+            account_id="ACCT-004",
+            permissions=frozenset({"documents:read"}),
+        ),
         limit=10,
     )
 
@@ -127,7 +152,12 @@ async def test_northstar_customer_cannot_retrieve_lumenworks_agreement(
 
     evidence_set = await DocumentRetriever(session).search(
         query="LumenWorks agreement",
-        context=UserContext(user_id="USR-001", role="customer", account_id="ACCT-001"),
+        context=UserContext(
+            user_id="USR-001",
+            role="customer",
+            account_id="ACCT-001",
+            permissions=frozenset({"documents:read"}),
+        ),
         limit=10,
     )
 

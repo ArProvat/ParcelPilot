@@ -3,6 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Ticket
+from app.schemas.auth import UserContext
+from app.security.authorization import accessible_account_ids, require_permission
 
 
 class TicketRepository:
@@ -25,4 +27,28 @@ class TicketRepository:
             .where(Ticket.status == "open")
             .order_by(Ticket.created_at.desc())
         )
+        return list(result.scalars().all())
+
+    async def get_accessible(self, ticket_id: str, user: UserContext) -> Ticket | None:
+        require_permission(user, "tickets:read")
+        stmt = select(Ticket).where(Ticket.id == ticket_id)
+        allowed_accounts = accessible_account_ids(user)
+        if allowed_accounts is not None:
+            if not allowed_accounts:
+                return None
+            stmt = stmt.where(Ticket.account_id.in_(allowed_accounts))
+
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_open_accessible(self, user: UserContext) -> list[Ticket]:
+        require_permission(user, "tickets:read")
+        stmt = select(Ticket).where(Ticket.status == "open").order_by(Ticket.created_at.desc())
+        allowed_accounts = accessible_account_ids(user)
+        if allowed_accounts is not None:
+            if not allowed_accounts:
+                return []
+            stmt = stmt.where(Ticket.account_id.in_(allowed_accounts))
+
+        result = await self.session.execute(stmt)
         return list(result.scalars().all())

@@ -96,7 +96,12 @@ async def test_lumenworks_service_credit_returns_agreement_and_current_sop(
 
     evidence_set = await DocumentRetriever(session).search(
         "LumenWorks failed pickup credit",
-        context=UserContext(user_id="USR-002", role="customer", account_id="ACCT-002"),
+        context=UserContext(
+            user_id="USR-002",
+            role="customer",
+            account_id="ACCT-002",
+            permissions=frozenset({"documents:read"}),
+        ),
         limit=5,
     )
     source_ids = {item.source_id for item in evidence_set.evidence}
@@ -113,7 +118,12 @@ async def test_cross_account_retrieval_filters_before_ranking(
 
     evidence_set = await DocumentRetriever(session).search(
         "LumenWorks service credit",
-        context=UserContext(user_id="USR-001", role="customer", account_id="ACCT-001"),
+        context=UserContext(
+            user_id="USR-001",
+            role="customer",
+            account_id="ACCT-001",
+            permissions=frozenset({"documents:read"}),
+        ),
         limit=10,
     )
 

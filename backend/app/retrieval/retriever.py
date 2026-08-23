@@ -12,6 +12,7 @@ from app.retrieval.authority import AuthorityClass, EvidenceDomain, authority_ra
 from app.retrieval.embeddings import EmbeddingProvider, HashEmbeddingProvider
 from app.schemas.auth import UserContext
 from app.schemas.evidence import Evidence, EvidenceSet
+from app.security.authorization import require_permission
 
 
 DEFAULT_VECTOR_CANDIDATES = 10
@@ -46,7 +47,14 @@ class DocumentRetriever:
     ) -> EvidenceSet:
         """Return authority-ranked evidence available to the authenticated user."""
         if context is None:
-            context = UserContext(user_id="anonymous", role="system", account_id=account_id)
+            context = UserContext(
+                user_id="system",
+                role="system",
+                account_id=account_id,
+                permissions=frozenset({"documents:read"}),
+            )
+
+        require_permission(context, "documents:read")
 
         normalized_query = _normalize_query(query)
         domain = _infer_domain(normalized_query)
