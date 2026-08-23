@@ -66,6 +66,13 @@ $env:POSTGRES_PORT='5433'
 docker compose up -d
 ```
 
+If another local service already uses frontend port `3000`, set:
+
+```powershell
+$env:FRONTEND_PORT='3001'
+docker compose up -d
+```
+
 Docker starts:
 
 - Frontend: `http://localhost:3000`

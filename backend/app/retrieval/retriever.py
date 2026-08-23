@@ -4,10 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from sqlalchemy import or_, select
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Float, bindparam, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DocumentChunk, DocumentSource
+from app.db.types import EMBEDDING_DIMENSION
 from app.retrieval.authority import AuthorityClass, EvidenceDomain, authority_rank
 from app.retrieval.embeddings import EmbeddingProvider, HashEmbeddingProvider
 from app.schemas.auth import UserContext
@@ -92,7 +94,12 @@ class DocumentRetriever:
 
         if _is_postgres_session(self.session):
             query_embedding = self.embedding_provider.embed(query)
-            distance = DocumentChunk.embedding.cosine_distance(query_embedding).label("distance")
+            distance = cast(
+                DocumentChunk.embedding.op("<=>")(
+                    bindparam("query_embedding", query_embedding, type_=Vector(EMBEDDING_DIMENSION))
+                ),
+                Float,
+            ).label("distance")
             stmt = (
                 stmt.add_columns(distance)
                 .where(DocumentChunk.embedding.is_not(None))

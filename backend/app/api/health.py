@@ -2,7 +2,6 @@
 from fastapi import APIRouter
 from sqlalchemy import func, select, text
 
-from app.db.session import AsyncSessionLocal
 from app.models import Account, DatasetConfig, DocumentChunk
 
 
@@ -27,6 +26,8 @@ async def readiness_status() -> dict:
         "vector_store": "unknown",
     }
     try:
+        from app.db.session import AsyncSessionLocal
+
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
             status["database"] = "ok"

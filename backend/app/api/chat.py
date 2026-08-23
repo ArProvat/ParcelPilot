@@ -1,4 +1,6 @@
 """Chat streaming endpoint."""
+import logging
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +14,7 @@ from app.services.streaming import serialize_sse
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/stream")
@@ -29,6 +32,7 @@ async def chat_stream(
             ):
                 yield serialize_sse(event)
         except Exception:
+            logger.exception("agent_stream_failed", extra={"parcelpilot": {"thread_id": request.thread_id}})
             from app.services.streaming import make_event
 
             yield serialize_sse(
