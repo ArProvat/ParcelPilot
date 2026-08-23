@@ -1,4 +1,5 @@
 """Domain services used by tools and API handlers."""
+from app.services.agent_stream import AgentStreamService
 from app.services.business_rules import BusinessRuleService
 from app.services.document_search import DocumentSearchService
 from app.services.escalations import EscalationService
@@ -6,6 +7,7 @@ from app.services.operational_data import OperationalDataService, booking_age_mi
 
 __all__ = [
     "BusinessRuleService",
+    "AgentStreamService",
     "DocumentSearchService",
     "EscalationService",
     "OperationalDataService",

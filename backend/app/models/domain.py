@@ -81,6 +81,35 @@ class DatasetConfig(Base):
     important_note: Mapped[str | None] = mapped_column(Text)
 
 
+class ConversationThread(Base):
+    __tablename__ = "conversation_threads"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id"), index=True)
+    title: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    messages: Mapped[list["ConversationMessage"]] = relationship(
+        back_populates="thread",
+        cascade="all, delete-orphan",
+    )
+
+
+class ConversationMessage(Base):
+    __tablename__ = "conversation_messages"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    thread_id: Mapped[str] = mapped_column(ForeignKey("conversation_threads.id"), index=True, nullable=False)
+    role: Mapped[str] = mapped_column(String(30), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    metadata_: Mapped[dict[str, Any]] = mapped_column("metadata", metadata_json_type, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    thread: Mapped[ConversationThread] = relationship(back_populates="messages")
+
+
 class Escalation(Base):
     __tablename__ = "escalations"
 

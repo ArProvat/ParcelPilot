@@ -6,6 +6,7 @@ from app.repositories.escalations import EscalationRepository
 from app.repositories.orders import OrderRepository
 from app.repositories.pending_actions import PendingActionRepository
 from app.repositories.tickets import TicketRepository
+from app.repositories.threads import ConversationMessageRepository, ConversationThreadRepository
 
 __all__ = [
     "AccountRepository",
@@ -15,4 +16,6 @@ __all__ = [
     "OrderRepository",
     "PendingActionRepository",
     "TicketRepository",
+    "ConversationMessageRepository",
+    "ConversationThreadRepository",
 ]
