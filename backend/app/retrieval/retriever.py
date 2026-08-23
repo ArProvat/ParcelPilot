@@ -50,14 +50,15 @@ class DocumentRetriever:
 
         normalized_query = _normalize_query(query)
         domain = _infer_domain(normalized_query)
+        retrieval_query = _expand_query_for_domain(normalized_query, domain)
         candidates = await self._retrieve_candidates(
-            normalized_query,
+            retrieval_query,
             context,
             include_deprecated=include_deprecated,
             vector_candidates=vector_candidates,
         )
 
-        scored = self._score_candidates(normalized_query, domain, candidates)
+        scored = self._score_candidates(retrieval_query, domain, candidates)
         ranked = _rank_and_dedupe(scored, domain)
         evidence = [_to_evidence(item) for item in ranked[:limit]]
 
@@ -129,11 +130,11 @@ def _rank_and_dedupe(scored: list[_ScoredEvidence], domain: EvidenceDomain) -> l
     return deduped
 
 
-def _rank_key(item: _ScoredEvidence, query_domain: EvidenceDomain) -> tuple[int, bool, bool, float]:
+def _rank_key(item: _ScoredEvidence, query_domain: EvidenceDomain) -> tuple[bool, int, bool, float]:
     chunk_domain = item.chunk.metadata_.get("domain", EvidenceDomain.GENERAL)
     return (
-        authority_rank(item.source.authority_class, query_domain),
         chunk_domain == query_domain,
+        authority_rank(item.source.authority_class, query_domain),
         item.source.account_id is not None,
         item.relevance_score,
     )
@@ -216,6 +217,20 @@ def _infer_domain(query: str) -> EvidenceDomain:
     if "shipment status" in query or "booked" in query or "picked_up" in query:
         return EvidenceDomain.SHIPMENT_STATUS
     return EvidenceDomain.GENERAL
+
+
+def _expand_query_for_domain(query: str, domain: EvidenceDomain) -> str:
+    expansions = {
+        EvidenceDomain.CANCELLATION: "order booked shipment charge waiver customer agreement fee",
+        EvidenceDomain.SERVICE_CREDIT: "failed pickup carrier fault threshold amount sop customer agreement",
+        EvidenceDomain.SUPPORT_SLA: "severity first response target support policy",
+        EvidenceDomain.PLAN_ENTITLEMENT: "plan capability supported file rows csv",
+        EvidenceDomain.KNOWN_ISSUE: "status workaround investigating monitoring",
+    }
+    expansion = expansions.get(domain)
+    if expansion is None:
+        return query
+    return f"{query} {expansion}"
 
 
 def _lexical_relevance(query: str, content: str, domain: str | EvidenceDomain | None) -> float:

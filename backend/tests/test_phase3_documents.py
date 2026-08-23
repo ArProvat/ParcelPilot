@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.db.base import Base
 from app.models import Account, DocumentChunk, DocumentSource
 from app.retrieval import DocumentRetriever, import_document_corpus
+from app.schemas.auth import UserContext
 
 
 @pytest.fixture
@@ -66,8 +67,8 @@ async def test_current_policy_excludes_deprecated_policy_by_default(
 ) -> None:
     await _seed_documents(session, documents_dir)
 
-    evidence = await DocumentRetriever(session).search("Enterprise P1 SLA", account_id=None, limit=5)
-    source_ids = {item.source_id for item in evidence}
+    evidence_set = await DocumentRetriever(session).search("Enterprise P1 SLA", account_id=None, limit=5)
+    source_ids = {item.source_id for item in evidence_set.evidence}
 
     assert "support_policy_v3" in source_ids
     assert "support_policy_v2" not in source_ids
@@ -79,8 +80,8 @@ async def test_northstar_cancellation_returns_agreement_and_current_sop(
 ) -> None:
     await _seed_documents(session, documents_dir)
 
-    evidence = await DocumentRetriever(session).search("Northstar cancellation fee", account_id="ACCT-001", limit=5)
-    source_ids = {item.source_id for item in evidence}
+    evidence_set = await DocumentRetriever(session).search("Northstar cancellation fee", account_id="ACCT-001", limit=5)
+    source_ids = {item.source_id for item in evidence_set.evidence}
 
     assert "northstar_agreement" in source_ids
     assert "cancellation_service_credit_sop_v4" in source_ids
@@ -93,12 +94,12 @@ async def test_lumenworks_service_credit_returns_agreement_and_current_sop(
 ) -> None:
     await _seed_documents(session, documents_dir)
 
-    evidence = await DocumentRetriever(session).search(
+    evidence_set = await DocumentRetriever(session).search(
         "LumenWorks failed pickup credit",
-        account_id="ACCT-002",
+        context=UserContext(user_id="USR-002", role="customer", account_id="ACCT-002"),
         limit=5,
     )
-    source_ids = {item.source_id for item in evidence}
+    source_ids = {item.source_id for item in evidence_set.evidence}
 
     assert "lumenworks_agreement" in source_ids
     assert "cancellation_service_credit_sop_v4" in source_ids
@@ -110,12 +111,12 @@ async def test_cross_account_retrieval_filters_before_ranking(
 ) -> None:
     await _seed_documents(session, documents_dir)
 
-    evidence = await DocumentRetriever(session).search(
+    evidence_set = await DocumentRetriever(session).search(
         "LumenWorks service credit",
-        account_id="ACCT-001",
+        context=UserContext(user_id="USR-001", role="customer", account_id="ACCT-001"),
         limit=10,
     )
 
-    assert evidence
-    assert all(item.account_id != "ACCT-002" for item in evidence)
-    assert "lumenworks_agreement" not in {item.source_id for item in evidence}
+    assert evidence_set.evidence
+    assert all(item.account_id != "ACCT-002" for item in evidence_set.evidence)
+    assert "lumenworks_agreement" not in {item.source_id for item in evidence_set.evidence}
