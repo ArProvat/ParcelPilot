@@ -17,3 +17,6 @@ tzdata
 pgvector
 pypdf
 pytest
+pytest-asyncio
+httpx
+aiosqlite

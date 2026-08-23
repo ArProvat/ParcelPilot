@@ -57,3 +57,25 @@ uvicorn app.main:app --reload
 ```bash
 docker-compose up --build
 ```
+
+If another local Postgres service already uses port `5432`, run the stack with a different host port:
+
+```powershell
+$env:POSTGRES_PORT='5433'
+docker compose up -d
+```
+
+### Frontend
+
+The assessment UI is a static frontend served on port `3000`:
+
+```powershell
+cd frontend
+python -m http.server 3000
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
