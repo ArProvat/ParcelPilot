@@ -2,7 +2,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -79,7 +79,7 @@ class DatasetConfig(Base):
 class Escalation(Base):
     __tablename__ = "escalations"
 
-    id: Mapped[uuid4] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True, nullable=False)
     ticket_id: Mapped[str | None] = mapped_column(ForeignKey("tickets.id"))
     priority: Mapped[str] = mapped_column(String(30), nullable=False)
@@ -95,7 +95,7 @@ class Escalation(Base):
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
-    id: Mapped[uuid4] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[str | None] = mapped_column(String(255), index=True)
     account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id"), index=True)
     thread_id: Mapped[str | None] = mapped_column(String(255), index=True)
