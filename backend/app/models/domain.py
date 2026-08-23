@@ -1,14 +1,19 @@
 """Operational domain models for ParcelPilot."""
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
 from app.db.base import Base
+from app.db.types import embedding_column_type
+
+
+metadata_json_type = JSON().with_variant(JSONB, "postgresql")
 
 
 class Account(Base):
@@ -105,3 +110,35 @@ class AuditEvent(Base):
     tool_name: Mapped[str | None] = mapped_column(String(255))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+
+
+class DocumentSource(Base):
+    __tablename__ = "document_sources"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    source_key: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(80), index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), index=True, nullable=False)
+    scope: Mapped[str] = mapped_column(String(30), index=True, nullable=False)
+    account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id"), index=True)
+    authority_class: Mapped[str] = mapped_column(String(80), index=True, nullable=False)
+    effective_at: Mapped[date | None] = mapped_column(Date)
+    metadata_: Mapped[dict[str, Any]] = mapped_column("metadata", metadata_json_type, default=dict, nullable=False)
+
+    chunks: Mapped[list["DocumentChunk"]] = relationship(back_populates="document", cascade="all, delete-orphan")
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    document_id: Mapped[UUID] = mapped_column(ForeignKey("document_sources.id"), index=True, nullable=False)
+    page: Mapped[int | None] = mapped_column(Integer)
+    section: Mapped[str | None] = mapped_column(String(255), index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(embedding_column_type())
+    metadata_: Mapped[dict[str, Any]] = mapped_column("metadata", metadata_json_type, default=dict, nullable=False)
+
+    document: Mapped[DocumentSource] = relationship(back_populates="chunks")
