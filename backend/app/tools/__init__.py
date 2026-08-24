@@ -5,12 +5,18 @@ from app.tools.escalations import create_escalation_tools
 from app.tools.structured_data import create_structured_data_tools
 
 
-def create_agent_tools(user, session_factory=None):
+def create_agent_tools(session_factory=None):
+    """Create all ParcelPilot tools.
+
+    Tools do NOT close over a UserContext.  Each tool reads the caller's
+    identity from ``config["configurable"]["user"]`` at invocation time,
+    keeping agent construction independent of user identity.
+    """
     return [
-        *create_document_search_tools(user, session_factory=session_factory),
-        *create_structured_data_tools(user, session_factory=session_factory),
-        *create_business_rule_tools(user, session_factory=session_factory),
-        *create_escalation_tools(user, session_factory=session_factory),
+        *create_document_search_tools(session_factory=session_factory),
+        *create_structured_data_tools(session_factory=session_factory),
+        *create_business_rule_tools(session_factory=session_factory),
+        *create_escalation_tools(session_factory=session_factory),
     ]
 
 

@@ -77,4 +77,11 @@ class SentenceTransformersEmbeddingProvider:
 def get_embedding_provider() -> EmbeddingProvider:
     if settings.EMBEDDING_PROVIDER == "hash":
         return HashEmbeddingProvider()
-    return SentenceTransformersEmbeddingProvider(settings.EMBEDDING_MODEL_NAME)
+    try:
+        return SentenceTransformersEmbeddingProvider(settings.EMBEDDING_MODEL_NAME)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning("sentence_transformers_unavailable_fallback_hash: sentence-transformers not available, using deterministic HashEmbeddingProvider")
+        return HashEmbeddingProvider()
+

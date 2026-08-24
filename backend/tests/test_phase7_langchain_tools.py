@@ -55,7 +55,7 @@ def northstar_user() -> UserContext:
 
 
 def test_agent_tool_registry_exposes_safe_capabilities(session_factory) -> None:
-    tools = {tool.name: tool for tool in create_agent_tools(northstar_user(), session_factory=session_factory)}
+    tools = {tool.name: tool for tool in create_agent_tools(session_factory=session_factory)}
 
     assert set(tools) == {
         "search_documents",
@@ -78,10 +78,12 @@ def test_agent_tool_registry_exposes_safe_capabilities(session_factory) -> None:
 
 
 async def test_search_documents_tool_returns_authority_aware_evidence(session_factory) -> None:
-    tools = {tool.name: tool for tool in create_agent_tools(northstar_user(), session_factory=session_factory)}
+    tools = {tool.name: tool for tool in create_agent_tools(session_factory=session_factory)}
+    config = {"configurable": {"user": northstar_user()}}
 
     result = await tools["search_documents"].ainvoke(
-        {"query": "Northstar cancellation terms for booked shipment", "domain": "cancellation"}
+        {"query": "Northstar cancellation terms for booked shipment", "domain": "cancellation"},
+        config=config,
     )
     source_ids = {item["source_id"] for item in result["evidence"]}
 
@@ -93,11 +95,13 @@ async def test_search_documents_tool_returns_authority_aware_evidence(session_fa
 
 
 async def test_tool_orchestration_foundation_order_then_documents(session_factory) -> None:
-    tools = {tool.name: tool for tool in create_agent_tools(northstar_user(), session_factory=session_factory)}
+    tools = {tool.name: tool for tool in create_agent_tools(session_factory=session_factory)}
+    config = {"configurable": {"user": northstar_user()}}
 
-    order_result = await tools["get_order"].ainvoke({"order_id": "ORD-1001"})
+    order_result = await tools["get_order"].ainvoke({"order_id": "ORD-1001"}, config=config)
     document_result = await tools["search_documents"].ainvoke(
-        {"query": "Can Northstar cancel a booked shipment without a fee?", "domain": "cancellation"}
+        {"query": "Can Northstar cancel a booked shipment without a fee?", "domain": "cancellation"},
+        config=config,
     )
 
     assert order_result["found"] is True
@@ -108,11 +112,12 @@ async def test_tool_orchestration_foundation_order_then_documents(session_factor
 
 def test_agent_factory_registers_prompt_tools_and_context(session_factory) -> None:
     model = BindableFakeChatModel(responses=["Done"])
+    tools = create_agent_tools(session_factory=session_factory)
 
     agent = create_parcelpilot_agent(
         model=model,
-        user=northstar_user(),
-        session_factory=session_factory,
+        tools=tools,
+        checkpointer=None,
     )
 
     assert agent is not None

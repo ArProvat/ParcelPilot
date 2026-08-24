@@ -369,7 +369,11 @@ function renderMessage(message) {
       ${message.approvals.length ? message.approvals.map((approval) => renderApproval(message.id, approval)).join("") : ""}
       ${message.errors.length ? renderErrors(message.errors) : ""}
 
-      <div class="message-content">${escapeHtml(message.content || (message.status === "streaming" ? "Working…" : ""))}</div>
+      <div class="message-content">${
+        message.role === "assistant"
+          ? renderMarkdown(message.content || (message.status === "streaming" ? "Working…" : ""))
+          : escapeHtml(message.content)
+      }</div>
     </article>
   `;
 }
@@ -556,3 +560,193 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+function renderMarkdown(raw) {
+  if (!raw) return "";
+
+  let text = String(raw).replace(/\r\n/g, "\n");
+
+  // Extract fenced code blocks first
+  const codeBlocks = [];
+  text = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const placeholder = `\x00CODEBLOCK_${codeBlocks.length}\x00`;
+    codeBlocks.push(
+      `<pre><code class="language-${escapeHtml(lang)}">${escapeHtml(code.trim())}</code></pre>`
+    );
+    return placeholder;
+  });
+
+  // Extract inline code spans
+  const inlineCodes = [];
+  text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+    const placeholder = `\x00INLINECODE_${inlineCodes.length}\x00`;
+    inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
+    return placeholder;
+  });
+
+  const lines = text.split("\n");
+  const output = [];
+  let inList = null; // "ul" or "ol"
+  let inTable = false;
+  let tableHeader = [];
+  let tableRows = [];
+
+  function flushList() {
+    if (inList) {
+      output.push(`</${inList}>`);
+      inList = null;
+    }
+  }
+
+  function flushTable() {
+    if (inTable) {
+      let tableHtml = '<div class="table-wrapper"><table>';
+      if (tableHeader.length) {
+        tableHtml += "<thead><tr>";
+        for (const th of tableHeader) {
+          tableHtml += `<th>${formatInline(th)}</th>`;
+        }
+        tableHtml += "</tr></thead>";
+      }
+      if (tableRows.length) {
+        tableHtml += "<tbody>";
+        for (const row of tableRows) {
+          tableHtml += "<tr>";
+          for (const cell of row) {
+            tableHtml += `<td>${formatInline(cell)}</td>`;
+          }
+          tableHtml += "</tr>";
+        }
+        tableHtml += "</tbody>";
+      }
+      tableHtml += "</table></div>";
+      output.push(tableHtml);
+      inTable = false;
+      tableHeader = [];
+      tableRows = [];
+    }
+  }
+
+  function formatInline(str) {
+    if (!str) return "";
+    let s = escapeHtml(str);
+    // Bold: **text** or __text__
+    s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/__(.+?)__/g, "<strong>$1</strong>");
+    // Italic: *text* or _text_
+    s = s.replace(/\*([^*\n]+?)\*/g, "<em>$1</em>");
+    s = s.replace(/_([^_\n]+?)_/g, "<em>$1</em>");
+    return s;
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Markdown table row: | cell | cell |
+    if (line.startsWith("|") && line.endsWith("|")) {
+      flushList();
+      const cells = line
+        .slice(1, -1)
+        .split("|")
+        .map((c) => c.trim());
+
+      // Divider row: |---|---|
+      const isDivider = cells.every((c) => /^:?-+:?$/.test(c));
+      if (isDivider) {
+        continue;
+      }
+
+      if (!inTable) {
+        inTable = true;
+        tableHeader = cells;
+      } else {
+        tableRows.push(cells);
+      }
+      continue;
+    } else if (inTable) {
+      flushTable();
+    }
+
+    // Blank line
+    if (!line) {
+      flushList();
+      continue;
+    }
+
+    // Code block placeholder
+    if (line.startsWith("\x00CODEBLOCK_")) {
+      flushList();
+      output.push(line);
+      continue;
+    }
+
+    // Headers
+    const hMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (hMatch) {
+      flushList();
+      const level = hMatch[1].length;
+      output.push(`<h${level}>${formatInline(hMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith("> ")) {
+      flushList();
+      output.push(`<blockquote>${formatInline(line.slice(2))}</blockquote>`);
+      continue;
+    }
+
+    // Horizontal Rule
+    if (/^(\*{3,}|-{3,}|_{3,})$/.test(line)) {
+      flushList();
+      output.push("<hr />");
+      continue;
+    }
+
+    // Unordered list: - item or * item
+    const ulMatch = line.match(/^[-*]\s+(.*)$/);
+    if (ulMatch) {
+      if (inList !== "ul") {
+        flushList();
+        inList = "ul";
+        output.push("<ul>");
+      }
+      output.push(`<li>${formatInline(ulMatch[1])}</li>`);
+      continue;
+    }
+
+    // Ordered list: 1. item
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
+    if (olMatch) {
+      if (inList !== "ol") {
+        flushList();
+        inList = "ol";
+        output.push("<ol>");
+      }
+      output.push(`<li>${formatInline(olMatch[2])}</li>`);
+      continue;
+    }
+
+    // Regular paragraph
+    flushList();
+    output.push(`<p>${formatInline(line)}</p>`);
+  }
+
+  flushList();
+  flushTable();
+
+  let html = output.join("");
+
+  // Restore inline codes
+  inlineCodes.forEach((codeHtml, idx) => {
+    html = html.replace(`\x00INLINECODE_${idx}\x00`, codeHtml);
+  });
+
+  // Restore code blocks
+  codeBlocks.forEach((blockHtml, idx) => {
+    html = html.replace(`\x00CODEBLOCK_${idx}\x00`, blockHtml);
+  });
+
+  return html;
+}
+

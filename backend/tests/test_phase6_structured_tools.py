@@ -98,10 +98,11 @@ async def test_list_account_tickets_uses_authenticated_scope(session_factory) ->
 
 
 async def test_langchain_get_order_tool_has_no_account_id_input(session_factory) -> None:
-    tools = {tool.name: tool for tool in create_structured_data_tools(northstar_user(), session_factory=session_factory)}
+    tools = {tool.name: tool for tool in create_structured_data_tools(session_factory=session_factory)}
+    config = {"configurable": {"user": northstar_user()}}
 
     input_fields = set(tools["get_order"].args_schema.model_fields)
-    result = await tools["get_order"].ainvoke({"order_id": "ORD-1001"})
+    result = await tools["get_order"].ainvoke({"order_id": "ORD-1001"}, config=config)
 
     assert input_fields == {"order_id"}
     assert result["found"] is True
@@ -110,9 +111,10 @@ async def test_langchain_get_order_tool_has_no_account_id_input(session_factory)
 
 
 async def test_langchain_tool_hides_cross_account_order(session_factory) -> None:
-    tools = {tool.name: tool for tool in create_structured_data_tools(northstar_user(), session_factory=session_factory)}
+    tools = {tool.name: tool for tool in create_structured_data_tools(session_factory=session_factory)}
+    config = {"configurable": {"user": northstar_user()}}
 
-    result = await tools["get_order"].ainvoke({"order_id": "ORD-2001"})
+    result = await tools["get_order"].ainvoke({"order_id": "ORD-2001"}, config=config)
 
     assert result["success"] is False
     assert result["found"] is False

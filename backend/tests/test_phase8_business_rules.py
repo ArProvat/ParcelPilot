@@ -98,10 +98,11 @@ async def test_tkt_501_sla_breached_and_escalation_recommended(session_factory) 
 
 
 async def test_business_rule_tools_are_registered_and_deterministic(session_factory) -> None:
-    tools = {tool.name: tool for tool in create_agent_tools(lumenworks_user(), session_factory=session_factory)}
+    tools = {tool.name: tool for tool in create_agent_tools(session_factory=session_factory)}
+    config = {"configurable": {"user": lumenworks_user()}}
 
-    credit = await tools["evaluate_service_credit"].ainvoke({"order_id": "ORD-2002"})
-    cancellation = await tools["evaluate_cancellation"].ainvoke({"order_id": "ORD-2001"})
+    credit = await tools["evaluate_service_credit"].ainvoke({"order_id": "ORD-2002"}, config=config)
+    cancellation = await tools["evaluate_cancellation"].ainvoke({"order_id": "ORD-2001"}, config=config)
 
     assert set(tools["evaluate_service_credit"].args_schema.model_fields) == {"order_id"}
     assert credit["eligible"] is True

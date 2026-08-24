@@ -1,11 +1,12 @@
 """LangChain write tools for escalation actions."""
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import StructuredTool
+from langchain_core.tools.base import InjectedToolArg
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.auth import UserContext
 from app.schemas.tools import CreateEscalationInput
 from app.services.escalations import EscalationService
 
@@ -14,7 +15,6 @@ SessionFactory = Callable[[], AsyncSession]
 
 
 def create_escalation_tools(
-    user: UserContext,
     session_factory: SessionFactory | None = None,
 ) -> list[StructuredTool]:
     if session_factory is None:
@@ -24,7 +24,7 @@ def create_escalation_tools(
 
     return [
         StructuredTool.from_function(
-            coroutine=_create_escalation_tool(user, session_factory),
+            coroutine=_create_escalation_tool(session_factory),
             name="create_escalation",
             description=(
                 "Create a support escalation for an accessible ticket. This is a state-changing action and must only "
@@ -35,15 +35,29 @@ def create_escalation_tools(
     ]
 
 
-def _create_escalation_tool(user: UserContext, session_factory: SessionFactory):
-    async def create_escalation(ticket_id: str, priority: str, reason: str) -> dict[str, Any]:
+def _create_escalation_tool(session_factory: SessionFactory):
+    async def create_escalation(
+        ticket_id: str,
+        priority: str,
+        reason: str,
+        config: Annotated[RunnableConfig, InjectedToolArg] = None,
+    ) -> dict[str, Any]:
+        from app.schemas.auth import UserContext
+
+        configurable = (config or {}).get("configurable", {})
+        user: UserContext = configurable.get("user")
+        thread_id: str = configurable.get("thread_id", "langgraph")
+
+        if user is None:
+            return {"success": False, "error": "Missing user context"}
+
         request = CreateEscalationInput(ticket_id=ticket_id, priority=priority, reason=reason)
         async with session_factory() as session:
             async with session.begin():
                 result = await EscalationService(session).execute_create_escalation(
                     request=request,
                     user=user,
-                    thread_id="langgraph",
+                    thread_id=thread_id,
                     idempotency_key=f"{user.user_id}:{ticket_id}:{priority}:{reason}",
                 )
             return result.model_dump(mode="json")
