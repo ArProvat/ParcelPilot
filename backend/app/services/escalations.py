@@ -98,8 +98,14 @@ class EscalationService:
             )
 
         existing = await self.escalations.get_by_idempotency_key(str(action.action_id))
-        if existing is not None:
-            result = _escalation_result(existing, "Escalation was already created.")
+        if action.status == "executed" or existing is not None:
+            if existing is not None:
+                result = _escalation_result(existing, "Escalation was already created.")
+            elif action.result:
+                result = EscalationResult(**action.result)
+            else:
+                result = EscalationResult(success=True, created=True, message="Escalation was already created.")
+
             action.status = "executed"
             action.result = result.model_dump(mode="json")
             action.updated_at = _now()
@@ -171,6 +177,16 @@ class EscalationService:
                 action=_action_from_input(request),
                 message="The escalation action has already executed and cannot be rejected.",
                 error=ToolError(code="INVALID_ID", message="The action was already executed."),
+            )
+
+        if action.status == "rejected":
+            return PendingActionResult(
+                success=True,
+                type="rejected",
+                thread_id=action.thread_id,
+                action_id=action.action_id,
+                action=_action_from_input(request),
+                message="The escalation was not created.",
             )
 
         now = _now()

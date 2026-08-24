@@ -197,7 +197,7 @@ async def test_resume_reauthorizes_before_mutation(session_factory) -> None:
 
 
 async def test_create_escalation_tool_is_registered_as_write_tool(session_factory) -> None:
-    tools = {tool.name: tool for tool in create_agent_tools(northstar_user("tickets:read", "escalations:create"), session_factory)}
+    tools = {tool.name: tool for tool in create_agent_tools(session_factory=session_factory)}
 
     assert "create_escalation" in tools
     assert set(tools["create_escalation"].args_schema.model_fields) == {"ticket_id", "priority", "reason"}
@@ -205,11 +205,11 @@ async def test_create_escalation_tool_is_registered_as_write_tool(session_factor
 
 
 def test_agent_factory_configures_human_approval_middleware(session_factory) -> None:
+    tools = create_agent_tools(session_factory=session_factory)
     agent = create_parcelpilot_agent(
         model=BindableFakeChatModel(responses=["Done"]),
-        user=northstar_user("tickets:read", "escalations:create"),
-        session_factory=session_factory,
-        enable_human_approval=True,
+        tools=tools,
+        checkpointer=None,
     )
 
     assert agent is not None

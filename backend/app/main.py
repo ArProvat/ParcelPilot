@@ -19,9 +19,33 @@ logger = logging.getLogger("parcelpilot.api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup lifecycle hook (initialize db, rag vectorstore, etc.)
+    """Application startup: build the LangGraph agent stack once and store in app.state."""
+    from app.agent import AgentEventTranslator, close_checkpointer, create_chat_model, create_checkpointer, create_parcelpilot_agent
+    from app.db.session import AsyncSessionLocal
+    from app.services.agent_stream import AgentStreamService
+    from app.tools import create_agent_tools
+
+    logger.info("parcelpilot_startup_begin")
+
+    # Build components once — reused for the lifetime of the process.
+    model = create_chat_model()
+    checkpointer = await create_checkpointer()
+    tools = create_agent_tools(session_factory=AsyncSessionLocal)
+    agent = create_parcelpilot_agent(model=model, tools=tools, checkpointer=checkpointer)
+    translator = AgentEventTranslator()
+
+    app.state.agent_stream_service = AgentStreamService(
+        agent=agent,
+        session_factory=AsyncSessionLocal,
+        event_translator=translator,
+    )
+
+    logger.info("parcelpilot_startup_complete")
     yield
-    # Shutdown lifecycle hook
+
+    # Shutdown: close the checkpointer connection pool cleanly.
+    await close_checkpointer(checkpointer)
+    logger.info("parcelpilot_shutdown_complete")
 
 
 app = FastAPI(
