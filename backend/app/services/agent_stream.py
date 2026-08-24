@@ -1,26 +1,58 @@
-"""Agent-facing stream service that maps internal work to app events."""
-from datetime import datetime, timezone
+"""Agent-facing stream service — pure adapter between LangGraph and SSE protocol.
+
+This service has exactly these responsibilities:
+  1. Validate thread/user access (via repository)
+  2. Build a trusted runtime config from the authenticated UserContext
+  3. Invoke the shared LangGraph agent
+  4. Translate LangGraph stream items into public SSE events
+  5. Detect HITL graph interrupts → approval.required event
+  6. Handle errors and cancellation
+
+It does NOT contain business logic, keyword routing, or policy decisions.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+from collections.abc import AsyncIterator
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from langchain_core.messages import HumanMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ConversationMessage, ConversationThread
-from app.repositories import ConversationMessageRepository, ConversationThreadRepository
+if TYPE_CHECKING:
+    from app.agent.stream_events import AgentEventTranslator
+from app.repositories.threads import ConversationThreadRepository
 from app.schemas.api import StreamEvent
 from app.schemas.auth import UserContext
-from app.schemas.tools import CreateEscalationInput
-from app.services.business_rules import BusinessRuleService
-from app.services.document_search import DocumentSearchService
-from app.services.escalations import EscalationService
-from app.services.operational_data import OperationalDataService
 from app.services.streaming import make_event
+
+logger = logging.getLogger(__name__)
+
+SessionFactory = Callable[[], AsyncSession]
+
+# LangGraph stream modes that give us token-level deltas AND node updates.
+_STREAM_MODES = ["messages", "updates"]
 
 
 class AgentStreamService:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-        self.messages = ConversationMessageRepository(session)
-        self.threads = ConversationThreadRepository(session)
+    """Adapter: LangGraph streaming → ParcelPilot SSE events."""
+
+    def __init__(
+        self,
+        agent,
+        session_factory: SessionFactory,
+        event_translator: AgentEventTranslator | None = None,
+    ) -> None:
+        if event_translator is None:
+            from app.agent.stream_events import AgentEventTranslator
+
+            event_translator = AgentEventTranslator()
+        self.agent = agent
+        self.session_factory = session_factory
+        self.event_translator = event_translator
 
     async def stream_chat(
         self,
@@ -28,150 +60,83 @@ class AgentStreamService:
         thread_id: str,
         message: str,
         user: UserContext,
-    ):
-        thread = await self._ensure_thread(thread_id, user)
-        await self._save_message(thread.id, "user", message)
-        await self.session.commit()
+    ) -> AsyncIterator[StreamEvent]:
+        """Stream a user message through the LangGraph agent.
 
-        yield make_event(thread_id, "message.started", {"message_id": str(uuid4())})
+        Yields ``StreamEvent`` objects; the caller serialises them to SSE.
+        """
+        # 1. Thread authorization / creation (before any LLM work).
+        async with self.session_factory() as session:
+            async with session.begin():
+                repo = ConversationThreadRepository(session)
+                try:
+                    await repo.ensure_access(thread_id, user)
+                except PermissionError:
+                    yield make_event(
+                        thread_id,
+                        "error",
+                        {"code": "FORBIDDEN", "message": "Thread belongs to another user."},
+                    )
+                    return
 
-        lower = message.lower()
-        if "escalate" in lower and "tkt-501" in lower:
-            async for event in self._stream_escalation_flow(thread_id, user):
-                yield event
-        elif "cancel" in lower and "ord-" in lower:
-            async for event in self._stream_cancellation_flow(thread_id, message, user):
-                yield event
-        else:
-            text = "I can help with orders, tickets, policies, service credits, SLA checks, and escalation requests."
-            yield make_event(thread_id, "message.delta", {"text": text})
-            await self._save_message(thread_id, "assistant", text)
-            await self.session.commit()
+        # 2. Build trusted runtime config — user identity lives here, not in
+        #    the agent graph itself.
+        config = {
+            "configurable": {
+                "thread_id": thread_id,
+                "user": user,
+            }
+        }
+        agent_input = {"messages": [HumanMessage(content=message)]}
 
-        yield make_event(thread_id, "message.completed", {"message_id": str(uuid4())})
+        # 3. message.started marks the beginning of an agent turn.
+        message_id = str(uuid4())
+        yield make_event(thread_id, "message.started", {"message_id": message_id})
 
-    async def _stream_cancellation_flow(self, thread_id: str, message: str, user: UserContext):
-        order_id = _extract_id(message, "ORD-") or ""
+        try:
+            # 4. Stream LangGraph execution.
+            async for mode_and_payload in self.agent.astream(
+                agent_input,
+                config=config,
+                stream_mode=_STREAM_MODES,
+            ):
+                # astream with a list of modes yields (mode, payload) tuples.
+                if isinstance(mode_and_payload, tuple) and len(mode_and_payload) == 2:
+                    mode, payload = mode_and_payload
+                else:
+                    # Some versions emit bare dicts for the default mode.
+                    mode, payload = "updates", mode_and_payload
 
-        yield make_event(thread_id, "tool.started", {"tool_call_id": str(uuid4()), "tool": "get_order", "label": f"Looking up {order_id}"})
-        order_result = await OperationalDataService(self.session).get_visible_order(order_id, user)
-        yield make_event(thread_id, "tool.completed", {"tool": "get_order", "status": "success" if order_result.success else "not_found"})
+                # 5. Detect HITL interrupt before translation.
+                if mode == "updates" and isinstance(payload, dict) and "__interrupt__" in payload:
+                    interrupts = payload["__interrupt__"]
+                    interrupt_val = interrupts[0] if isinstance(interrupts, (list, tuple)) and interrupts else interrupts
+                    for interrupt_event in self.event_translator._interrupt_events(interrupt_val, thread_id):
+                        yield interrupt_event
+                    continue
 
-        yield make_event(thread_id, "tool.started", {"tool_call_id": str(uuid4()), "tool": "evaluate_cancellation", "label": "Calculating cancellation eligibility"})
-        decision = await BusinessRuleService(self.session).evaluate_cancellation(order_id, user)
-        yield make_event(
-            thread_id,
-            "decision.completed",
-            {
-                "decision": "cancellation_allowed" if decision.allowed else "cancellation_not_allowed",
-                "fee_inr": str(decision.fee_inr) if decision.fee_inr is not None else None,
-                "reason_code": decision.reason_code,
-            },
-        )
+                # 6. Translate all other events.
+                for event in self.event_translator.translate(mode, payload, thread_id):
+                    yield event
 
-        yield make_event(thread_id, "tool.started", {"tool_call_id": str(uuid4()), "tool": "search_documents", "label": "Checking cancellation rules"})
-        docs = await DocumentSearchService(self.session).search(
-            query="Northstar cancellation terms for booked shipment",
-            domain="cancellation",
-            user=user,
-        )
-        for item in docs.evidence[:3]:
+        except asyncio.CancelledError:
+            # Client disconnected — propagate without logging as an error.
+            raise
+
+        except Exception:
+            logger.exception(
+                "agent_stream_failed",
+                extra={"parcelpilot": {"thread_id": thread_id, "user_id": user.user_id}},
+            )
             yield make_event(
                 thread_id,
-                "source.retrieved",
-                {"source": item.source_name, "section": item.section, "page": item.page},
-            )
-        yield make_event(thread_id, "tool.completed", {"tool": "search_documents", "status": "success"})
-
-        text = decision.explanation
-        yield make_event(thread_id, "message.delta", {"text": text})
-        await self._save_message(thread_id, "assistant", text)
-        await self.session.commit()
-
-    async def _stream_escalation_flow(self, thread_id: str, user: UserContext):
-        yield make_event(thread_id, "tool.started", {"tool_call_id": str(uuid4()), "tool": "get_ticket", "label": "Looking up TKT-501"})
-        ticket = await OperationalDataService(self.session).get_visible_ticket("TKT-501", user)
-        yield make_event(thread_id, "tool.completed", {"tool": "get_ticket", "status": "success" if ticket.success else "not_found"})
-
-        yield make_event(thread_id, "tool.started", {"tool_call_id": str(uuid4()), "tool": "evaluate_ticket_sla", "label": "Checking SLA"})
-        sla = await BusinessRuleService(self.session).evaluate_ticket_sla("TKT-501", user)
-        yield make_event(
-            thread_id,
-            "decision.completed",
-            {
-                "decision": "sla_breached" if sla.breached else "sla_not_breached",
-                "severity": sla.severity,
-                "breach_minutes": sla.breach_minutes,
-                "requires_immediate_escalation": sla.requires_immediate_escalation,
-            },
-        )
-
-        if sla.requires_immediate_escalation:
-            request = CreateEscalationInput(
-                ticket_id="TKT-501",
-                priority="urgent",
-                reason="P1 shipment creation outage with breached first-response SLA.",
-            )
-            action = await EscalationService(self.session).propose_create_escalation(
-                request=request,
-                user=user,
-                thread_id=thread_id,
-            )
-            await self.session.commit()
-            yield make_event(
-                thread_id,
-                "approval.required",
+                "error",
                 {
-                    "action_id": str(action.action_id),
-                    "action": action.action.tool,
-                    "ticket_id": action.action.arguments.ticket_id,
-                    "priority": action.action.arguments.priority,
-                    "reason": action.action.arguments.reason,
+                    "code": "AGENT_EXECUTION_FAILED",
+                    "message": "The request could not be completed.",
                 },
             )
-            text = "Escalation is recommended and requires approval before it is created."
-        else:
-            text = "Escalation is not required based on the current SLA evaluation."
 
-        yield make_event(thread_id, "message.delta", {"text": text})
-        await self._save_message(thread_id, "assistant", text)
-        await self.session.commit()
-
-    async def _ensure_thread(self, thread_id: str, user: UserContext) -> ConversationThread:
-        thread = await self.threads.get_for_user(thread_id, user)
-        if thread is not None:
-            return thread
-
-        now = datetime.now(timezone.utc)
-        thread = ConversationThread(
-            id=thread_id,
-            user_id=user.user_id,
-            account_id=user.account_id,
-            title=None,
-            created_at=now,
-            updated_at=now,
-        )
-        await self.threads.save(thread)
-        return thread
-
-    async def _save_message(self, thread_id: str, role: str, content: str) -> None:
-        await self.messages.save(
-            ConversationMessage(
-                thread_id=thread_id,
-                role=role,
-                content=content,
-                metadata_={},
-                created_at=datetime.now(timezone.utc),
-            )
-        )
-
-
-def _extract_id(text: str, prefix: str) -> str | None:
-    upper = text.upper()
-    start = upper.find(prefix)
-    if start == -1:
-        return None
-    end = start
-    while end < len(upper) and (upper[end].isalnum() or upper[end] == "-"):
-        end += 1
-    return upper[start:end]
+        finally:
+            # 7. message.completed closes the turn regardless of success/failure.
+            yield make_event(thread_id, "message.completed", {"message_id": message_id})

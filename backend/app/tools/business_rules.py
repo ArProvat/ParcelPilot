@@ -1,11 +1,12 @@
 """LangChain tools for deterministic business-rule evaluations."""
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import StructuredTool
+from langchain_core.tools.base import InjectedToolArg
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.auth import UserContext
 from app.schemas.tools import EvaluateOrderInput, EvaluateTicketInput
 from app.services.business_rules import BusinessRuleService
 
@@ -14,7 +15,6 @@ SessionFactory = Callable[[], AsyncSession]
 
 
 def create_business_rule_tools(
-    user: UserContext,
     session_factory: SessionFactory | None = None,
 ) -> list[StructuredTool]:
     if session_factory is None:
@@ -24,7 +24,7 @@ def create_business_rule_tools(
 
     return [
         StructuredTool.from_function(
-            coroutine=_evaluate_cancellation_tool(user, session_factory),
+            coroutine=_evaluate_cancellation_tool(session_factory),
             name="evaluate_cancellation",
             description=(
                 "Deterministically evaluate whether an accessible order can be cancelled and what cancellation fee applies. "
@@ -33,7 +33,7 @@ def create_business_rule_tools(
             args_schema=EvaluateOrderInput,
         ),
         StructuredTool.from_function(
-            coroutine=_evaluate_service_credit_tool(user, session_factory),
+            coroutine=_evaluate_service_credit_tool(session_factory),
             name="evaluate_service_credit",
             description=(
                 "Deterministically evaluate failed-pickup service credit eligibility and amount for an accessible order. "
@@ -42,7 +42,7 @@ def create_business_rule_tools(
             args_schema=EvaluateOrderInput,
         ),
         StructuredTool.from_function(
-            coroutine=_evaluate_ticket_sla_tool(user, session_factory),
+            coroutine=_evaluate_ticket_sla_tool(session_factory),
             name="evaluate_ticket_sla",
             description=(
                 "Deterministically evaluate support-ticket severity, response target, breach status, and escalation need."
@@ -52,8 +52,13 @@ def create_business_rule_tools(
     ]
 
 
-def _evaluate_cancellation_tool(user: UserContext, session_factory: SessionFactory):
-    async def evaluate_cancellation(order_id: str) -> dict[str, Any]:
+def _evaluate_cancellation_tool(session_factory: SessionFactory):
+    async def evaluate_cancellation(order_id: str, config: Annotated[RunnableConfig, InjectedToolArg] = None) -> dict[str, Any]:
+        from app.schemas.auth import UserContext
+
+        user: UserContext = (config or {}).get("configurable", {}).get("user")
+        if user is None:
+            return {"success": False, "error": "Missing user context"}
         async with session_factory() as session:
             result = await BusinessRuleService(session).evaluate_cancellation(order_id, user)
             return result.model_dump(mode="json")
@@ -61,8 +66,13 @@ def _evaluate_cancellation_tool(user: UserContext, session_factory: SessionFacto
     return evaluate_cancellation
 
 
-def _evaluate_service_credit_tool(user: UserContext, session_factory: SessionFactory):
-    async def evaluate_service_credit(order_id: str) -> dict[str, Any]:
+def _evaluate_service_credit_tool(session_factory: SessionFactory):
+    async def evaluate_service_credit(order_id: str, config: Annotated[RunnableConfig, InjectedToolArg] = None) -> dict[str, Any]:
+        from app.schemas.auth import UserContext
+
+        user: UserContext = (config or {}).get("configurable", {}).get("user")
+        if user is None:
+            return {"success": False, "error": "Missing user context"}
         async with session_factory() as session:
             result = await BusinessRuleService(session).evaluate_service_credit(order_id, user)
             return result.model_dump(mode="json")
@@ -70,8 +80,13 @@ def _evaluate_service_credit_tool(user: UserContext, session_factory: SessionFac
     return evaluate_service_credit
 
 
-def _evaluate_ticket_sla_tool(user: UserContext, session_factory: SessionFactory):
-    async def evaluate_ticket_sla(ticket_id: str) -> dict[str, Any]:
+def _evaluate_ticket_sla_tool(session_factory: SessionFactory):
+    async def evaluate_ticket_sla(ticket_id: str, config: Annotated[RunnableConfig, InjectedToolArg] = None) -> dict[str, Any]:
+        from app.schemas.auth import UserContext
+
+        user: UserContext = (config or {}).get("configurable", {}).get("user")
+        if user is None:
+            return {"success": False, "error": "Missing user context"}
         async with session_factory() as session:
             result = await BusinessRuleService(session).evaluate_ticket_sla(ticket_id, user)
             return result.model_dump(mode="json")

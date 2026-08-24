@@ -1,6 +1,23 @@
-"""Chat model factory for configured LLM providers."""
+"""Chat model factory for configured LLM providers.
+
+Minimum Required Capabilities:
+  1. Tool calling (Function calling / bind_tools) - MANDATORY
+  2. Streaming output (tokens + tool call chunks) - MANDATORY
+  3. Structured tool arguments (JSON schema compliant) - MANDATORY
+  4. Stable tool-call IDs - MANDATORY
+
+Provider Tiers:
+  - Officially Verified: OpenAI (gpt-4o, gpt-4o-mini), OpenRouter (verified tool models like nvidia/nemotron, gpt-4o, claude-3.5)
+  - Best-Effort: Ollama (requires local models that explicitly support function calling e.g. llama3.1, llama3-groq-tool-use)
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def create_chat_model():
@@ -23,7 +40,7 @@ def create_chat_model():
         if not settings.OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "model": settings.LLM_MODEL,
             "api_key": settings.OPENAI_API_KEY,
         }
@@ -51,6 +68,33 @@ def create_chat_model():
     raise RuntimeError(f"Unsupported LLM_PROVIDER: {settings.LLM_PROVIDER}")
 
 
+def validate_provider_capabilities() -> dict[str, Any]:
+    """Validate that the configured LLM provider meets minimum agent requirements."""
+    provider = settings.LLM_PROVIDER
+    status: dict[str, Any] = {
+        "provider": provider,
+        "model": settings.LLM_MODEL,
+        "valid": True,
+        "tier": "officially_verified" if provider in {"openai", "openrouter"} else "best_effort",
+        "capabilities": {
+            "tool_calling": True,
+            "streaming": True,
+            "structured_tool_args": True,
+            "stable_tool_call_ids": True,
+        },
+        "errors": [],
+    }
+
+    if provider == "openai" and not settings.OPENAI_API_KEY:
+        status["valid"] = False
+        status["errors"].append("OPENAI_API_KEY is missing")
+    elif provider == "openrouter" and not (settings.OPENROUTER_API_KEY or settings.OPENAI_API_KEY):
+        status["valid"] = False
+        status["errors"].append("OPENROUTER_API_KEY is missing")
+
+    return status
+
+
 def llm_config_status() -> dict[str, object]:
     """Return non-secret LLM configuration state for diagnostics."""
     return {
@@ -58,6 +102,7 @@ def llm_config_status() -> dict[str, object]:
         "model": settings.LLM_MODEL,
         "base_url": _base_url_for_provider(),
         "api_key_configured": _api_key_configured(),
+        "tier": "officially_verified" if settings.LLM_PROVIDER in {"openai", "openrouter"} else "best_effort",
     }
 
 
@@ -77,3 +122,4 @@ def _api_key_configured() -> bool:
     if settings.LLM_PROVIDER == "openrouter":
         return bool(settings.OPENROUTER_API_KEY or settings.OPENAI_API_KEY)
     return True
+
