@@ -54,7 +54,12 @@ async def create_checkpointer(app_env: str | None = None) -> Any:
             .replace("postgresql+psycopg://", "postgresql://")
         )
 
-        pool = AsyncConnectionPool(conninfo=dsn, max_size=20, open=False)
+        pool = AsyncConnectionPool(
+            conninfo=dsn,
+            max_size=20,
+            open=False,
+            kwargs={"autocommit": True, "prepare_threshold": None},
+        )
         await pool.open()
         saver = AsyncPostgresSaver(pool)
         await saver.setup()
