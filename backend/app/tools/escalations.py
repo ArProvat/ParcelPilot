@@ -43,6 +43,7 @@ def _create_escalation_tool(session_factory: SessionFactory):
         config: Annotated[RunnableConfig, InjectedToolArg] = None,
     ) -> dict[str, Any]:
         from app.schemas.auth import UserContext
+        from langgraph.types import interrupt
 
         configurable = (config or {}).get("configurable", {})
         user: UserContext = configurable.get("user")
@@ -54,12 +55,25 @@ def _create_escalation_tool(session_factory: SessionFactory):
         request = CreateEscalationInput(ticket_id=ticket_id, priority=priority, reason=reason)
         async with session_factory() as session:
             async with session.begin():
-                result = await EscalationService(session).execute_create_escalation(
+                pending = await EscalationService(session).propose_create_escalation(
                     request=request,
                     user=user,
                     thread_id=thread_id,
-                    idempotency_key=f"{user.user_id}:{ticket_id}:{priority}:{reason}",
                 )
-            return result.model_dump(mode="json")
+
+            if not pending.success:
+                return pending.model_dump(mode="json")
+
+            # Pause LangGraph agent execution and require human approval
+            interrupt({
+                "action_id": str(pending.action_id),
+                "action": "create_escalation",
+                "ticket_id": request.ticket_id,
+                "priority": request.priority,
+                "reason": request.reason,
+            })
+
+            return pending.model_dump(mode="json")
 
     return create_escalation
+
