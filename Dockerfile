@@ -11,14 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
-COPY migrations ./migrations
-COPY scripts ./scripts
-COPY alembic.ini .
+COPY backend/app ./app
+COPY backend/migrations ./migrations
+COPY backend/scripts ./scripts
+COPY backend/alembic.ini .
+COPY data /data
 
 EXPOSE 8000
 
