@@ -1,6 +1,9 @@
 const API_BASE =
   window.PARCELPILOT_API_BASE ||
-  `${window.location.protocol}//${window.location.hostname}:8000/api/v1`;
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? `${window.location.protocol}//${window.location.hostname}:8000/api/v1`
+    : "https://parcelpilot-ukfg.onrender.com/api/v1");
+
 
 const state = {
   token: localStorage.getItem("parcelpilot_token") || "",
