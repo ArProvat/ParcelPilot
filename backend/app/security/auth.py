@@ -17,6 +17,12 @@ MOCK_USERS: dict[str, UserContext] = {
         account_id="ACCT-001",
         permissions=frozenset({"orders:read", "tickets:read", "documents:read", "escalations:create"}),
     ),
+    "mock-northstar-revoked": UserContext(
+        user_id="USR-NORTHSTAR-1",
+        role="customer",
+        account_id="ACCT-001",
+        permissions=frozenset({"orders:read", "tickets:read", "documents:read"}),  # escalations:create REVOKED
+    ),
     "mock-lumenworks": UserContext(
         user_id="USR-LUMENWORKS-1",
         role="customer",

@@ -1,4 +1,6 @@
 """Conversation thread repositories with ownership filtering."""
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +19,38 @@ class ConversationThreadRepository:
 
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def ensure_access(self, thread_id: str, user: UserContext) -> ConversationThread:
+        """Return the thread if the user owns it; create it if new; raise PermissionError otherwise.
+
+        This is the authoritative access-check for streaming.  Call it before
+        invoking the agent so that cross-user thread access is denied before
+        any LLM work begins.
+        """
+        thread = await self.get_for_user(thread_id, user)
+        if thread is not None:
+            return thread
+
+        # Check whether the thread exists but belongs to another user.
+        existing = await self.session.execute(
+            select(ConversationThread).where(ConversationThread.id == thread_id)
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise PermissionError(f"Thread {thread_id!r} belongs to another user")
+
+        # Create a new thread owned by this user.
+        now = datetime.now(timezone.utc)
+        thread = ConversationThread(
+            id=thread_id,
+            user_id=user.user_id,
+            account_id=user.account_id,
+            title=None,
+            created_at=now,
+            updated_at=now,
+        )
+        self.session.add(thread)
+        await self.session.flush()
+        return thread
 
     async def save(self, thread: ConversationThread) -> ConversationThread:
         self.session.add(thread)
