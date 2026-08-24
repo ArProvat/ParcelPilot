@@ -60,7 +60,15 @@ class DocumentRetriever:
         require_permission(context, "documents:read")
 
         normalized_query = _normalize_query(query)
-        evidence_domain = EvidenceDomain(domain) if domain is not None else _infer_domain(normalized_query)
+        evidence_domain = None
+        if domain:
+            try:
+                evidence_domain = EvidenceDomain(domain.lower().strip())
+            except ValueError:
+                evidence_domain = None
+        if evidence_domain is None:
+            evidence_domain = _infer_domain(normalized_query)
+
         retrieval_query = _expand_query_for_domain(normalized_query, evidence_domain)
         candidates = await self._retrieve_candidates(
             retrieval_query,
