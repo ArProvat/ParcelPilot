@@ -258,23 +258,34 @@ Mutation-time authorization is checked again on resume. If a user loses `escalat
 
 Audit events record proposal, approval/rejection, and mutation results.
 
-## 10. Streaming API
+## 10. Checkpointer and State Persistence
+
+LangGraph state persistence differs by environment:
+
+- **Production Mode (`APP_ENV=production`)**: Strictly requires `AsyncPostgresSaver` backed by PostgreSQL. Fails closed (`RuntimeError`) during startup if the PostgreSQL connection is unavailable, preventing ephemeral or in-memory fallback from losing pending approval state or thread history.
+- **Development & Testing Mode**: Uses `AsyncPostgresSaver` when database connectivity exists, falling back to `MemorySaver` with explicit warnings.
+
+### Checkpoint Durability Across Process Restarts
+
+When a human-in-the-loop interrupt occurs (`approval.required`), the execution graph snapshot (messages, pending tool calls, action state) is serialized into the PostgreSQL checkpointer. If the FastAPI process restarts before the user decides, the resume request loads the snapshot from Postgres by `thread_id`, re-authorizes the active JWT `UserContext`, and proceeds to execute the single mutation idempotently.
+
+## 11. Streaming API
 
 The frontend does not consume LangChain/LangGraph internals directly. FastAPI exposes an application-level stream event protocol.
 
-Examples:
+Events emitted by `AgentEventTranslator`:
+- `message.started`: Agent turn initiated.
+- `tool.started`: Agent chose to invoke an authorized tool.
+- `tool.completed`: Tool finished (sanitized metadata, no leaked tokens/secrets).
+- `source.retrieved`: Document evidence chunk found by `search_documents`.
+- `decision.completed`: Structured rule decision from `evaluate_*` tools.
+- `approval.required`: State-changing write paused for human review.
+- `action.completed`: Approved mutation committed.
+- `message.delta`: Token text stream from the model.
+- `message.completed`: Agent turn finished.
+- `error`: Sanitized error notification.
 
-- `message.started`;
-- `tool.started`;
-- `tool.completed`;
-- `source.retrieved`;
-- `approval.required`;
-- `action.completed`;
-- `message.delta`;
-- `message.completed`;
-- `error`.
-
-The UI shows observable system activity such as “Looking up shipment,” “Checking cancellation eligibility,” and source citations. It does not stream private chain-of-thought reasoning.
+The UI shows observable system activity such as “Looking up shipment,” “Checking cancellation eligibility,” and source citations. It does not stream private chain-of-thought reasoning or internal graph state.
 
 ## 11. Operational configuration
 

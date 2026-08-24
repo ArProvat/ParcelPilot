@@ -17,30 +17,30 @@ The system combines customer-specific contract retrieval, current policy/SOP ret
 ## Architecture overview
 
 ```text
-                Static frontend
-                       |
-                    FastAPI
-                       |
-              authenticated UserContext
-                       |
-              Agent / orchestration layer
-                       |
-        +--------------+--------------+
-        |              |              |
-  Retrieval tools  Data tools    Rule tools
-        |              |              |
-   pgvector docs   PostgreSQL    Python rules
-        |              |              |
-        +--------------+--------------+
-                       |
-              answer or proposed action
-                       |
-                 HITL approval
-                       |
-                audited mutation
+POST /api/v1/chat/stream
+        ↓
+FastAPI authentication (JWT / Mock)
+        ↓
+UserContext (trusted identity + permissions)
+        ↓
+ConversationThreadRepository.ensure_access()
+        ↓
+AgentStreamService
+        ↓
+LangGraph ReAct Agent (AsyncPostgresSaver / MemorySaver)
+        ↓
+LLM ↔ Authorized Tools (PostgreSQL / pgvector / Python Rules)
+        ↓
+HITL Interrupt where required (approval.required)
+        ↓
+AgentEventTranslator
+        ↓
+ParcelPilot SSE Events (message.delta, tool.*, source.*, etc.)
 ```
 
-The backend exposes LangChain-compatible tools and an agent factory, while the current streaming demo routes the main assessment flows deterministically through the same services so they are easy to test. In the model-backed path, the LLM is used for intent understanding, tool selection, multi-step orchestration, and response synthesis. It is not trusted for authentication, authorization, source authority, financial arithmetic, or write approval.
+The runtime is driven by a LangGraph ReAct agent. The LLM is used for intent understanding, tool selection, multi-step orchestration, and response synthesis. It is **never** trusted for authentication, tenant scoping, source authority, financial arithmetic, or direct database mutations.
+
+All tool executions receive the trusted `UserContext` via runtime configuration, and permissions are enforced at the repository and tool layers before any data enters the model context. State-changing actions (`create_escalation`) propose an action and pause execution via LangGraph interrupt until explicit human approval and re-authorization occur.
 
 ## Demo identities
 
